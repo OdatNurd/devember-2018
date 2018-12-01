@@ -1,8 +1,34 @@
 {
-	"folders":
-	[
-		{
-			"path": "."
-		}
-	]
+    "build_systems":
+    [
+        {
+            "name": "remote_build_server",
+            "shell_cmd": "dotnet build",
+            "variants":
+            [
+                {
+                    "name": "Clean",
+                    "shell_cmd": "dotnet clean"
+                },
+                {
+                    "name": "Run",
+                    "shell_cmd": "dotnet run"
+                }
+            ],
+            "word_wrap": false,
+            "quiet": true,
+            "working_dir": "${project_path}/remote_build_server/"
+        }
+    ],
+    "folders":
+    [
+        {
+            "folder_exclude_patterns":
+            [
+                "obj",
+                "bin"
+            ],
+            "path": "."
+        }
+    ]
 }

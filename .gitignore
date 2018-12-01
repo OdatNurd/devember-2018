@@ -1,3 +1,5 @@
 *.sublime-workspace
+obj/
+bin/
 devember.todo
 tag.txt
