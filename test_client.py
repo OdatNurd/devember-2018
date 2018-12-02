@@ -34,7 +34,7 @@ def plugin_loaded():
 
 def plugin_unloaded():
     if _jobThread is not None:
-        _jobQueue.put((None, None))
+        _jobQueue.put((None, None, None))
         _jobThread.join(0.25)
 
 
@@ -77,13 +77,15 @@ class NetworkThread(Thread):
     def run(self):
         running = True
         while running:
-            host, port = _jobQueue.get()
+            host, port, msg = _jobQueue.get()
             if host is None:
                 running = False
             else:
-                self.run_query(host, port)
+                self.run_query(host, port, msg)
 
-    def run_query(self, host, port):
+    def run_query(self, host, port, msg):
+        msg =  msg + "<EOF>"
+
         try:
             # Create a socket
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -105,7 +107,7 @@ class NetworkThread(Thread):
                 # and you can't tell how much was sent.
                 #
                 # Sends need to be bytes.
-                sock.send('Hello, world!<EOF>'.encode('utf-8'))
+                sock.send(msg.encode('utf-8'))
 
                 # Blocking receive of the data;
                 #
@@ -134,8 +136,17 @@ class NetworkThread(Thread):
 #
 # If our protocol is binary, use struct.pack() to prepare data.
 class SocketTestCommand(sublime_plugin.ApplicationCommand):
+    last_msg = "Hello, World!"
+
     def run(self, host, port):
-        _jobQueue.put((host, port))
+        sublime.active_window().show_input_panel(
+            "Message:",
+            self.last_msg or "",
+            lambda msg: self.test(host, port, msg), None, None)
+
+    def test(self, host, port, msg):
+        self.last_msg = msg
+        _jobQueue.put((host, port, msg))
 
 
 ### ---------------------------------------------------------------------------
