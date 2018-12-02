@@ -128,6 +128,43 @@ class NetworkThread(Thread):
                 log("Socket Error:\n{0}", err, error=True))
 
 
+class ProtocolMessage():
+    """
+    The base class for all protocol messages sent to and received from the
+    remote end. The constructor can take any number of keyword arguments, but
+    the _data argument is special and tells the constructor that it should
+    construct based on the bytes in the data instead.
+    """
+    def __init__(self, _data=None, **kwargs):
+        if _data:
+            self.decode(_data)
+
+    def msg_id(self):
+        """
+        The unique protocol message id for messages of this type. This is used
+        to associated protocol messages classes with the id values they
+        represent.
+        """
+        pass
+
+    def encode(self):
+        """
+        Given the state of this object, return back a protocol formatted bytes
+        object that can be used to reconstruct the object later. The first
+        bytes in the encoded data must be the msg_id() of this message type
+        so that the received knows what message type it is.
+        """
+        pass
+
+    def decode(self, data):
+        """
+        Given a piece of data, set up this object by decoding that data back
+        into the appropriate parts. The length of the data can be queried or
+        verified to ensure that things work as we expect.
+        """
+        pass
+
+
 ### ---------------------------------------------------------------------------
 
 
