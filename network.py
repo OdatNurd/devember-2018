@@ -1,4 +1,5 @@
 from threading import Thread
+import inspect
 import struct
 
 
@@ -220,12 +221,14 @@ class ProtocolMessage():
     class and then called there.
 
     The abstract methods are to be implemented by the subclasses to provide
-    message specific behaviours. In particular the versions implemented here
+    message specific behaviors. In particular the versions implemented here
     will throw an exception if you call them, to remind the developer that they
     forgot to implement something.
     """
+    _registry = {}
+
     @classmethod
-    def register(self, id, classObj): # base only
+    def register(cls, classObj):
         """
         Called one or more times at startup to associate instances of all of
         the subclasses of this class with their ID values.
@@ -233,10 +236,20 @@ class ProtocolMessage():
         This allows from_data() to determine what kind of message a block of
         data is so that it can call the appropriate decode() method.
         """
-        pass
+        if not inspect.isclass(classObj):
+            raise ValueError('Need to provide a subclass of ProtocolMessage')
+
+        if not issubclass(classObj, ProtocolMessage):
+            raise ValueError('Can only register Protocol Messages (got %s)' % classObj.__name__)
+
+        msg_id = classObj.msg_id()
+        if msg_id in cls._registry:
+            raise ValueError('Duplicate message type detected (%d, %s)' % (msg_id, classObj.__name__))
+
+        cls._registry[msg_id] = classObj
 
     @classmethod
-    def from_data(self, data): # base only
+    def from_data(cls, data):
         """
         Takes a block of data (bytes) that contains a protocol message. This
         will examine the ID value of the message to determine what kind of
@@ -246,18 +259,23 @@ class ProtocolMessage():
         This is the single endpoint for taking a block of data and turning it
         back into a message.
         """
-        pass
+        msg_id, = struct.unpack_from(">H", data)
+        msg_class = cls._registry.get(msg_id)
+        if msg_class is None:
+            raise ValueError('Unknown message type (%d)' % msg_id)
+
+        return msg_class.decode(data)
 
     @classmethod
-    def id(self): #abstract
+    def msg_id(cls): #abstract
         """
         Provide a unique numeric id that represents this message. This needs to
         be implemented by subclasses; this version will throw an exception.
         """
-        pass
+        raise NotImplementedError('abstract base method should be overridden')
 
     @classmethod
-    def decode(self, data): # abstract
+    def decode(cls, data): # abstract
         """
         Takes a byte object and return back an instance of this class based on
         that data. The bytes provided will still contain the prefix id bytes.
@@ -265,7 +283,7 @@ class ProtocolMessage():
         Unlike from_data(), this needs to be implemented by subclasses; this
         version will throw an exception.
         """
-        pass
+        raise NotImplementedError('abstract base method should be overridden')
 
     def encode(self): # abstract
         """
@@ -275,7 +293,77 @@ class ProtocolMessage():
         This needs to be implemented by subclasses; this version will throw
         an exception.
         """
-        pass
+        raise NotImplementedError('abstract base method should be overridden')
+
+
+class IntroductionMessage(ProtocolMessage):
+    """
+    This message is used to introduce ourselves to the build server and declare
+    what version of the protocol we speak, so that the server knows what to
+    expect from us.
+    """
+    protocol_version = 1
+
+    @classmethod
+    def msg_id(cls):
+        return 0
+
+    @classmethod
+    def decode(cls, data):
+        msg = IntroductionMessage()
+        _, msg.protocol_version  = struct.unpack(">HB", data)
+
+        return msg
+
+    def encode(self):
+        return struct.pack(">HB",
+            IntroductionMessage.msg_id(),
+            self.protocol_version)
+
+
+class ErrorMessage(ProtocolMessage):
+    """
+    This message is used to report an error to the remote end of the
+    connection.
+    """
+    def __init__(self, error_code, error_msg):
+        self.error_code = error_code
+        self.error_msg = error_msg
+
+    @classmethod
+    def msg_id(cls):
+        return 1
+
+    @classmethod
+    def decode(cls, data):
+        pre_len = struct.calcsize(">HII")
+        _, code, msg_len = struct.unpack(">HII", data[:pre_len])
+
+        msg_str, = struct.unpack_from(">%ds" % msg_len, data, pre_len)
+
+        return ErrorMessage(code, msg_str.decode('utf-8'))
+
+    def encode(self):
+        msg_data = self.error_msg.encode("utf-8")
+        return struct.pack(">HII%ds" % len(msg_data),
+            ErrorMessage.msg_id(),
+            self.error_code,
+            len(msg_data),
+            msg_data)
+
+ProtocolMessage.register(IntroductionMessage)
+ProtocolMessage.register(ErrorMessage)
+
+block1 = IntroductionMessage().encode()
+block2 = ErrorMessage(1234, "An error of numerical run proportions has occured").encode()
+
+msg1 = ProtocolMessage.from_data(block1)
+msg2 = ProtocolMessage.from_data(block2)
+
+print("Introduction with protocol version %d" % msg1.protocol_version)
+print("Error(%d): '%s'" % (other.error_code, other.error_msg))
+
+
 
 
 def test_simple_encode(string_val):
@@ -393,12 +481,12 @@ def block_msg_id(data):
     return struct.unpack_from(">H", data)
 
 
-print("=== Simple ===")
-test_simple_decode(test_simple_encode("This string ends here. ->"))
+# print("=== Simple ===")
+# test_simple_decode(test_simple_encode("This string ends here. ->"))
 
-print("=== Complex ===")
-test_complex_decode(test_complex_encode("This string is longer, variable length, and ends here. ->"))
+# print("=== Complex ===")
+# test_complex_decode(test_complex_encode("This string is longer, variable length, and ends here. ->"))
 
-print("=== Msg Lookup ===")
-msg_id = block_msg_id(test_simple_encode("This is a string"))
-print("Message has id %d" % msg_id)
+# print("=== Msg Lookup ===")
+# msg_id = block_msg_id(test_simple_encode("This is a string"))
+# print("Message has id %d" % msg_id)
