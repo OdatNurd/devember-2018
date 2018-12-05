@@ -2,8 +2,10 @@ import sublime
 import sublime_plugin
 
 from threading import Thread, Event, Lock
+import queue
 import inspect
 import struct
+import socket
 import time
 
 from .messages import ProtocolMessage, IntroductionMessage, ErrorMessage
@@ -16,7 +18,7 @@ class ConnectionManager():
     global instance of this class created, and it's what connects all of the
     parts of the system together.
 
-    Underlyiung this would be a threadsafe list of all connections. Connections
+    Underlying this would be a thread safe list of all connections. Connections
     can be added and found from here. All read/write/close operations happen
     in the connection.
 
@@ -47,7 +49,7 @@ class ConnectionManager():
         Return: None
 
         Shut down the system; tells all open connections to shut down, then
-        closes them and tells the network thread to terminuate itself.
+        closes them and tells the network thread to terminate itself.
 
         Called from plugin_unloaded() to break all of our connections if we get
         unloaded.
@@ -100,30 +102,32 @@ class Connection():
     This class wraps a connection to the remote server. They are handed out by
     the connection manager in response to opening a connection.
     """
-
-    # The first queue is for messages that we've been told to deliver to the
-    # other end of the connection while the second queue is for holding
-    # messages that have been received.
-    send_queue = None
-    recv_queue = None
-
-    # The client socket for this connection. This would be a non-blocking
-    sock = None
-
-    # Variables to store the message currently being sent and received, until
-    # we get enough data would also be here.
-
     def __init__(self, host, port):
         """
         Create a new connection to the provided host and port combination.
         This should only be called by the connection manager, which will hold
         onto the connection.
         """
+        self.send_queue = queue.Queue()
+        self.recv_queue = queue.Queue()
+
         self.host = host;
         self.port = port
 
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setblocking(False)
+
+        log("  -- Creating connection: {0}".format(self))
+
+    def __del__(self):
+        log("  -- Destroying connection: {0}".format(self))
+        self.close()
+
     def __str__(self):
-        return "<Connection host='{0}:{1}'>".format(self.host, self.port)
+        return "<Connection host='{0}:{1}' socket={2} out={3} in={4}>".format(
+            self.host, self.port, self.socket.fileno(),
+            self.send_queue.qsize(),
+            self.recv_queue.qsize())
 
     def __repr__(self):
         return str(self)
@@ -135,7 +139,7 @@ class Connection():
 
         This would go into the input queue.
         """
-        pass
+        self.send_queue.put(protocolMsgInstance)
 
     def receive(self):
         """
@@ -143,11 +147,14 @@ class Connection():
         pending messages, or a ProtocolMessage from the queue if any are
         available.
         """
-        pass
+        try:
+            return self.recv_queue.get_nowait()
+        except queue.Empty:
+            return None
 
     def register(self, callback):
         """
-        For registering an interest in incomuing messages. Every time a message
+        For registering an interest in incoming messages. Every time a message
         arrives, or the connection breaks, the callback is invoked to tell the
         caller.
 
@@ -185,7 +192,14 @@ class Connection():
         it to send any partial sends. We may also want to make it transmit a
         graceful goodbye message or something.
         """
-        pass
+        # TODO: Remove ourselves from the connection list in the manager
+        if self.socket:
+            try:
+                self.socket.shutdown(socket.SHUT_RDWR)
+                self.socket.close()
+            except:
+                pass
+
 
     def fileno(self):
         """
@@ -193,25 +207,28 @@ class Connection():
         return the socket handle for the select() call to select on. It comes
         from our socket.
         """
-        pass
+        if self.socket:
+            return socket.fileno()
+
+        return None
 
     def _is_writeable(self):
         """
-        Returns True if this connection is writeable; that is, that it has
+        Returns True if this connection is write-able; that is, that it has
         something to write.
 
-        Thuis would return True if the input queue has items in it or if we
+        This would return True if the input queue has items in it or if we
         are currently sending a message and didn't send it all in one shot.
 
         The network thread uses this to know if this client cares to know if
-        it is writeable or not.
+        it is write-able or not.
         """
-        pass
+        return self.send_queue.qsize() > 0
 
     def _send(self):
         """
         Called by the network thread in response to a select() call if this
-        connection selected as writeable.
+        connection selected as write-able.
 
         Here we would try to send as many messages from the queue as possible,
         with possibly a sanity check to ensure that we don't get into an I/O
@@ -250,7 +267,7 @@ class NetworkThread(Thread):
     def run(self):
         """
         The main loop needs to loop until a semaphore tells it that it's time
-        to quit, at which point it will drop out of the loop and gracefullly
+        to quit, at which point it will drop out of the loop and gracefully
         exit, perhaps telling all connections to close in response.
 
         This needs to select all connections for reading, only those that have
@@ -261,7 +278,7 @@ class NetworkThread(Thread):
         while not self.event.is_set():
             time.sleep(0.25)
 
-        log("== Network thread is gracefullly ending")
+        log("== Network thread is gracefully ending")
 
 
 def message_to_block(data):
@@ -279,3 +296,27 @@ def message_to_block(data):
     block[4:] = data
 
     return block
+
+def test():
+    mgr = ConnectionManager()
+    mgr.startup()
+
+    time.sleep(2)
+
+    mgr.shutdown()
+    print("Run complete")
+
+# sublime.set_timeout_async(lambda: test())
+
+mgr = ConnectionManager()
+conn1 = mgr.connect("localhost", 50000)
+conn2 = mgr.connect("dart", 7)
+
+conn1.send(IntroductionMessage())
+conn2.receive()
+
+# print(mgr.find_connection(host="localhost", port=50000))
+mgr = None
+conn1 = None
+conn2 = None
+print("Run complete")
