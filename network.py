@@ -1,8 +1,14 @@
-from threading import Thread
+import sublime
+import sublime_plugin
+
+from threading import Thread, Event, Lock
 import inspect
 import struct
+import time
 
 from .messages import ProtocolMessage, IntroductionMessage, ErrorMessage
+from .test_client import log
+
 
 class ConnectionManager():
     """
@@ -17,6 +23,12 @@ class ConnectionManager():
     The network thread introspects the client list here for use in select()
     calls to delegate network activity to the appropriate client.
     """
+    def __init__(self):
+        self.thr_event = Event()
+        self.net_thread = NetworkThread(self.thr_event)
+        self.connections = list()
+        self.conn_lock = Lock()
+
     def startup(self):
         """
         Return: None
@@ -27,7 +39,8 @@ class ConnectionManager():
         Called from plugin_loaded() to get things ready for connections when
         the package loads.
         """
-        pass
+        log("== Connection Manager Initializing")
+        self.net_thread.start()
 
     def shutdown(self):
         """
@@ -39,7 +52,9 @@ class ConnectionManager():
         Called from plugin_unloaded() to break all of our connections if we get
         unloaded.
         """
-        pass
+        log("== Connection Manager Shutting Down")
+        self.thr_event.set()
+        self.net_thread.join(0.25)
 
     def connect(self, host, port):
         """
@@ -50,9 +65,13 @@ class ConnectionManager():
 
         This connection is added to our internal list.
         """
-        pass
+        with self.conn_lock:
+            new_connection = Connection(host, port)
+            self.connections.append(new_connection)
 
-    def find_connection(self, host, port):
+        return new_connection
+
+    def find_connection(self, host=None, port=None):
         """
         Return: [Connection]
 
@@ -62,6 +81,18 @@ class ConnectionManager():
 
         The returned list may be empty.
         """
+        retcons = list()
+        with self.conn_lock:
+            for connection in self.connections:
+                if host is not None and host != connection.host:
+                    continue
+
+                if port is not None and port != connection.port:
+                    continue
+
+                retcons.append(connection)
+
+        return retcons
 
 
 class Connection():
@@ -88,7 +119,14 @@ class Connection():
         This should only be called by the connection manager, which will hold
         onto the connection.
         """
-        pass
+        self.host = host;
+        self.port = port
+
+    def __str__(self):
+        return "<Connection host='{0}:{1}'>".format(self.host, self.port)
+
+    def __repr__(self):
+        return str(self)
 
     def send(self, protocolMsgInstance):
         """
@@ -201,6 +239,14 @@ class NetworkThread(Thread):
     The background thread for doing all of our socket I/O. This ensures that
     we keep doing sends and receives no matter what else is happening.
     """
+    def __init__(self, event):
+        super().__init__()
+        self.event = event
+        log("== Creating network thread")
+
+    def __del__(self):
+        log("== Destroying network thread")
+
     def run(self):
         """
         The main loop needs to loop until a semaphore tells it that it's time
@@ -211,7 +257,11 @@ class NetworkThread(Thread):
         data pending send for writing, and needs to safely busy loop when there
         are no connections.
         """
-        pass
+        log("== Launching network thread")
+        while not self.event.is_set():
+            time.sleep(0.25)
+
+        log("== Network thread is gracefullly ending")
 
 
 def message_to_block(data):
