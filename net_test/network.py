@@ -3,6 +3,8 @@ import queue
 import inspect
 import struct
 import socket
+import select
+import os
 import time
 import textwrap
 
@@ -277,7 +279,7 @@ class Connection():
         from our socket.
         """
         if self.socket:
-            return socket.fileno()
+            return self.socket.fileno()
 
         return None
 
@@ -292,7 +294,10 @@ class Connection():
         The network thread uses this to know if this client cares to know if
         it is write-able or not.
         """
-        return self.send_queue.qsize() > 0
+        if self.socket:
+            return not self.connected or self.send_queue.qsize() > 0
+
+        return False
 
     def _send(self):
         """
@@ -356,9 +361,25 @@ class NetworkThread(Thread):
         data pending send for writing, and needs to safely busy loop when there
         are no connections.
         """
-        log("== Launching network thread")
+        log("== Entering network loop")
         while not self.event.is_set():
-            time.sleep(0.25)
+            with self.conn_lock:
+                readable = [c for c in self.connections if c.socket is not None]
+                writable = [c for c in self.connections if c._is_writeable()]
+
+            if not readable and not writable:
+                log("*** Network thread has no connections to service")
+                time.sleep(0.25)
+                continue
+
+            rset, wset, _ = select.select(readable, writable, [], 0.25)
+
+            for conn in rset:
+                conn._receive()
+
+            for conn in wset:
+                conn._send()
+
 
         log("== Network thread is gracefully ending")
 
