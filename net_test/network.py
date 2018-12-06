@@ -216,7 +216,7 @@ class Connection():
 
         This would go into the input queue.
         """
-        self.send_queue.put(protocolMsgInstance)
+        self.send_queue.put(protocolMsgInstance.encode())
 
     def receive(self):
         """
@@ -321,6 +321,13 @@ class Connection():
                 self.close()
                 return
 
+        try:
+            data = self.send_queue.get_nowait()
+            log(" --> Transmitting {0} bytes to the remote end".format(len(data)))
+            self.socket.send(data)
+        except queue.Empty:
+            pass
+
     def _receive(self):
         """
         Called by the network thread in response to a select() call if this
@@ -330,7 +337,12 @@ class Connection():
         socket call, queuing any that we fully read and tracking partial
         reads for later.
         """
-        pass
+        try:
+            data = self.socket.recv(1024)
+            log(" --> Received {0} bytes from the remote end".format(len(data)))
+            self.recv_queue.put(ProtocolMessage.from_data(data))
+        except BlockingIOError:
+            pass
 
 
 ### ---------------------------------------------------------------------------
