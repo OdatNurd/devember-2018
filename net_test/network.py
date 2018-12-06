@@ -48,10 +48,11 @@ class ConnectionManager():
     calls to delegate network activity to the appropriate client.
     """
     def __init__(self):
-        self.thr_event = Event()
-        self.net_thread = NetworkThread(self.thr_event)
-        self.connections = list()
         self.conn_lock = Lock()
+        self.connections = list()
+        self.thr_event = Event()
+        self.net_thread = NetworkThread(self.conn_lock, self.connections,
+                                        self.thr_event)
 
     def startup(self):
         """
@@ -322,10 +323,12 @@ class NetworkThread(Thread):
     The background thread for doing all of our socket I/O. This ensures that
     we keep doing sends and receives no matter what else is happening.
     """
-    def __init__(self, event):
-        super().__init__()
-        self.event = event
+    def __init__(self, lock, connections, event):
         log("== Creating network thread")
+        super().__init__()
+        self.conn_lock = lock
+        self.connections = connections
+        self.event = event
 
     def __del__(self):
         log("== Destroying network thread")
