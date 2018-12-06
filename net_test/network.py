@@ -429,13 +429,18 @@ def test():
 mgr = ConnectionManager()
 mgr.startup()
 
-mgr.connect("localhost", 50000)
-mgr.connect("dart", 7)
-conn1 = mgr.connect("dart", 7)
+conn = mgr.connect("localhost", 7)
+# mgr.connect("dart", 7)
+# conn1 = mgr.connect("dart", 7)
 
-conn1.close()
-conn1 = None
-time.sleep(1)
+conn.send(ErrorMessage(77341926, "This is an arbitrary error message. Go us!"))
+# conn1.close()
+# conn1 = None
+
+time.sleep(5)
+msg = conn.receive()
+if msg:
+    log("==> Error Received({0}): {1}".format(msg.error_code, msg.error_msg))
 
 # print(mgr.find_connection(host="localhost", port=50000))
 mgr.shutdown()
