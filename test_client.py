@@ -97,7 +97,7 @@ class NetworkThread(Thread):
 
                 # Connect; anecdotally instead of a host this should be a
                 # resolved IP address -- the first resolved address is used,
-                # which may  be either IPv4 or IPv6.
+                # which may be either IPv4 or IPv6.
                 sock.connect((host, port))
 
                 # Sends may be short; send returns the number of bytes sent (I
