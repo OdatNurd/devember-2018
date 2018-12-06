@@ -123,10 +123,13 @@ class ConnectionManager():
             try:
                 connection.socket.shutdown(socket.SHUT_RDWR)
                 connection.socket.close()
+
             except:
                 pass
 
-            connection.socket = None
+            finally:
+                connection.socket = None
+                connection.connected = False
 
     def find_connection(self, host=None, port=None):
         """
@@ -184,6 +187,7 @@ class Connection():
         self.port = port
 
         self.socket = socket
+        self.connected = False
 
         log("  -- Creating connection: {0}".format(self))
 
@@ -194,10 +198,11 @@ class Connection():
         # self.close()
 
     def __str__(self):
-        return "<Connection host='{0}:{1}' socket={2} out={3} in={4}>".format(
+        return "<Connection host='{0}:{1}' socket={2} out={3} in={4}{5}>".format(
             self.host, self.port, self.socket.fileno() if self.socket else None,
             self.send_queue.qsize(),
-            self.recv_queue.qsize())
+            self.recv_queue.qsize(),
+            " CONNECTED" if self.connected else "")
 
     def __repr__(self):
         return str(self)
@@ -301,7 +306,15 @@ class Connection():
         If we can't send a whole message, track what we didn't send for later
         calls.
         """
-        pass
+        if not self.connected:
+            code = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            if code == 0:
+                self.connected = True
+                log("Connection established: {0}".format(self))
+            else:
+                log("Connection failed: {0}".format(os.strerror(code)))
+                self.close()
+                return
 
     def _receive(self):
         """
