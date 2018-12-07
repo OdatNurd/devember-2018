@@ -191,6 +191,8 @@ class Connection():
         self.socket = socket
         self.connected = False
 
+        self.send_data = None
+
         log("  -- Creating connection: {0}".format(self))
 
     def __del__(self):
@@ -216,7 +218,12 @@ class Connection():
 
         This would go into the input queue.
         """
-        self.send_queue.put(protocolMsgInstance.encode())
+        msg = protocolMsgInstance.encode()
+        block = bytearray(len(msg) + 4)
+        struct.pack_into(">I", block, 0, len(msg))
+        block[4:] = msg
+
+        self.send_queue.put(block)
 
     def receive(self):
         """
@@ -295,7 +302,9 @@ class Connection():
         it is write-able or not.
         """
         if self.socket:
-            return not self.connected or self.send_queue.qsize() > 0
+            return (not self.connected or
+                    self.send_queue.qsize() > 0 or
+                    self.send_data is not None)
 
         return False
 
@@ -322,11 +331,14 @@ class Connection():
                 return
 
         try:
-            data = self.send_queue.get_nowait()
-            log(" --> Transmitting {0} bytes to the remote end".format(len(data)))
-            self.socket.send(data)
+            if self.send_data is None:
+                self.send_data = self.send_queue.get_nowait()
         except queue.Empty:
-            pass
+            return
+
+        log(" --> Transmitting {0} bytes to the remote end".format(len(self.send_data)))
+        self.socket.send(self.send_data)
+        self.send_data = None
 
     def _receive(self):
         """
@@ -338,9 +350,14 @@ class Connection():
         reads for later.
         """
         try:
-            data = self.socket.recv(1024)
+            data = self.socket.recv(4096)
             log(" --> Received {0} bytes from the remote end".format(len(data)))
-            self.recv_queue.put(ProtocolMessage.from_data(data))
+
+            block_len = struct.unpack_from(">I", data)
+            msg_data = data[4:]
+
+            log("   --> Block length is {0} bytes".format(block_len))
+            self.recv_queue.put(ProtocolMessage.from_data(msg_data))
         except BlockingIOError:
             pass
 
@@ -437,7 +454,7 @@ conn.send(ErrorMessage(77341926, "This is an arbitrary error message. Go us!"))
 # conn1.close()
 # conn1 = None
 
-time.sleep(5)
+time.sleep(1)
 msg = conn.receive()
 if msg:
     log("==> Error Received({0}): {1}".format(msg.error_code, msg.error_msg))
