@@ -192,6 +192,8 @@ class Connection():
         self.connected = False
 
         self.send_data = None
+        self.receive_data = bytearray()
+        self.expected_length = None
 
         log("  -- Creating connection: {0}".format(self))
 
@@ -367,16 +369,42 @@ class Connection():
         reads for later.
         """
         try:
-            data = self.socket.recv(4096)
-            log(" --> Received {0} bytes from the remote end".format(len(data)))
+            new_data = self.socket.recv(4096)
+            log(" --> Received {0} bytes from the remote end".format(len(new_data)))
+            if not new_data:
+                return
 
-            block_len = struct.unpack_from(">I", data)
-            msg_data = data[4:]
+            self.receive_data.extend(new_data)
 
-            log("   --> Block length is {0} bytes".format(block_len))
-            self.recv_queue.put(ProtocolMessage.from_data(msg_data))
+            if self.expected_length is None:
+                if len(self.receive_data) >= 4:
+                    self.expected_length, = struct.unpack_from(">I", self.receive_data)
+                    self.receive_data = self.receive_data[4:]
+
+                    log ("  --> Expected message length is {0}".format(self.expected_length))
+                else:
+                    log (" ** Not enough bytes to get block length")
+                    return
+
+            if len(self.receive_data) >= self.expected_length:
+                msg_data = self.receive_data[:self.expected_length]
+                self.receive_data = self.receive_data[self.expected_length:]
+                self.expected_length = None
+
+                self.recv_queue.put(ProtocolMessage.from_data(msg_data))
+                log (" ** Received a complete message!")
+            else:
+                log(" ** Not enough bytes; have {0}, need {1}".format(
+                    len(self.receive_data),
+                    self.expected_length))
+
         except BlockingIOError:
             pass
+
+        except Exception as e:
+            log(" *** Error while receiving: {0}".format(e))
+            self.close()
+            return
 
 
 ### ---------------------------------------------------------------------------
