@@ -336,9 +336,26 @@ class Connection():
         except queue.Empty:
             return
 
-        log(" --> Transmitting {0} bytes to the remote end".format(len(self.send_data)))
-        self.socket.send(self.send_data)
-        self.send_data = None
+        try:
+            log(" --> Transmitting {0} bytes to the remote end".format(
+                len(self.send_data)))
+
+            sent = self.socket.send(self.send_data)
+            # sent = self.socket.send(self.send_data[:1])
+            self.send_data = self.send_data[sent:]
+            if not self.send_data:
+                self.send_data = None
+            else:
+                log(" --> Short send; {0} bytes remaining".format(
+                    len(self.send_data)))
+
+        except BlockingIOError:
+            pass
+
+        except Exception as e:
+            log(" *** Error while sending: {0}".format(e))
+            self.close()
+            return
 
     def _receive(self):
         """
