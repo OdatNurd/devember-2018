@@ -333,23 +333,20 @@ class Connection():
                 return
 
         try:
-            if self.send_data is None:
-                self.send_data = self.send_queue.get_nowait()
+            for _ in range(10):
+                if self.send_data is None:
+                    self.send_data = self.send_queue.get_nowait()
+
+                sent = self.socket.send(self.send_data)
+                # sent = self.socket.send(self.send_data[:1])
+                self.send_data = self.send_data[sent:]
+                if not self.send_data:
+                    self.send_data = None
+                else:
+                    break
+
         except queue.Empty:
-            return
-
-        try:
-            log(" --> Transmitting {0} bytes to the remote end".format(
-                len(self.send_data)))
-
-            sent = self.socket.send(self.send_data)
-            # sent = self.socket.send(self.send_data[:1])
-            self.send_data = self.send_data[sent:]
-            if not self.send_data:
-                self.send_data = None
-            else:
-                log(" --> Short send; {0} bytes remaining".format(
-                    len(self.send_data)))
+            pass
 
         except BlockingIOError:
             pass
@@ -357,7 +354,6 @@ class Connection():
         except Exception as e:
             log(" *** Error while sending: {0}".format(e))
             self.close()
-            return
 
     def _receive(self):
         """
@@ -370,33 +366,27 @@ class Connection():
         """
         try:
             new_data = self.socket.recv(4096)
-            log(" --> Received {0} bytes from the remote end".format(len(new_data)))
             if not new_data:
                 return
 
             self.receive_data.extend(new_data)
 
-            if self.expected_length is None:
-                if len(self.receive_data) >= 4:
-                    self.expected_length, = struct.unpack_from(">I", self.receive_data)
-                    self.receive_data = self.receive_data[4:]
+            while True:
+                if self.expected_length is None:
+                    if len(self.receive_data) >= 4:
+                        self.expected_length, = struct.unpack_from(">I", self.receive_data)
+                        self.receive_data = self.receive_data[4:]
+                    else:
+                        break
 
-                    log ("  --> Expected message length is {0}".format(self.expected_length))
+                if len(self.receive_data) >= self.expected_length:
+                    msg_data = self.receive_data[:self.expected_length]
+                    self.receive_data = self.receive_data[self.expected_length:]
+                    self.expected_length = None
+
+                    self.recv_queue.put(ProtocolMessage.from_data(msg_data))
                 else:
-                    log (" ** Not enough bytes to get block length")
-                    return
-
-            if len(self.receive_data) >= self.expected_length:
-                msg_data = self.receive_data[:self.expected_length]
-                self.receive_data = self.receive_data[self.expected_length:]
-                self.expected_length = None
-
-                self.recv_queue.put(ProtocolMessage.from_data(msg_data))
-                log (" ** Received a complete message!")
-            else:
-                log(" ** Not enough bytes; have {0}, need {1}".format(
-                    len(self.receive_data),
-                    self.expected_length))
+                    break
 
         except BlockingIOError:
             pass
@@ -495,14 +485,18 @@ conn = mgr.connect("localhost", 7)
 # mgr.connect("dart", 7)
 # conn1 = mgr.connect("dart", 7)
 
+conn.send(IntroductionMessage())
 conn.send(ErrorMessage(77341926, "This is an arbitrary error message. Go us!"))
 # conn1.close()
 # conn1 = None
 
-time.sleep(1)
-msg = conn.receive()
-if msg:
-    log("==> Error Received({0}): {1}".format(msg.error_code, msg.error_msg))
+for x in range(100):
+    msg = conn.receive()
+    if isinstance(msg, IntroductionMessage):
+        log("==> Received introduction with protocol version {0}".format(msg.protocol_version))
+    if isinstance(msg, ErrorMessage):
+        log("==> Error Received({0}): {1}".format(msg.error_code, msg.error_msg))
+    time.sleep(0.1)
 
 # print(mgr.find_connection(host="localhost", port=50000))
 mgr.shutdown()
