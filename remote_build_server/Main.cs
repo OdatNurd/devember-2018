@@ -263,6 +263,26 @@ public class AsynchronousSocketListener
         Console.WriteLine("Copied: {0}", myArray.ToByteString());
         Console.WriteLine("BigEndianBitConverter => {0}", bec.ToUInt32(myArray, 2));
 
+        // byte[] intro = new byte[] {0, 0, 1};
+        // byte[] error = new byte[] {0, 1, 73, 150, 2, 210, 0, 0, 0, 57, 73, 32, 97, 109,
+        //                 32, 116, 104, 101, 32, 101, 114, 114, 111, 114, 32, 109, 101,
+        //                 115, 115, 97, 103, 101, 44, 32, 97, 110, 100, 32, 73, 39, 109,
+        //                 32, 115, 111, 109, 101, 32, 110, 117, 109, 98, 101, 114, 32,
+        //                 111, 102, 32, 98, 121, 116, 101, 115, 32, 108, 111, 110, 103};
+
+        byte[] intro = new IntroductionMessage().encode();
+        byte[] error = new ErrorMessage(987654321, "Blast Off!").encode();
+
+        try
+        {
+            Console.WriteLine("{0}", MessageFactory.from_data(intro));
+            Console.WriteLine("{0}", MessageFactory.from_data(error));
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine("Error: {0}", e);
+        }
+
         Console.WriteLine("Done");
         return 0;
     }
