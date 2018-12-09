@@ -217,73 +217,73 @@ public class AsynchronousSocketListener
     // Our entry point; this just starts us listening.
     public static int Main(String[] args)
     {
-        // StartListening();
+        StartListening();
 
-        // A 32 bit test value, and what it appears as when you encode it as
-        // a big endian value; value here taken from using struct.pack() in
-        // Python.
-        UInt32 sample = 1234567890;
-        byte[] test = {73, 150, 2, 210};
+        // // A 32 bit test value, and what it appears as when you encode it as
+        // // a big endian value; value here taken from using struct.pack() in
+        // // Python.
+        // UInt32 sample = 1234567890;
+        // byte[] test = {73, 150, 2, 210};
 
-        // Our converters; we really only want the big endian one.
-        var lec = new LittleEndianBitConverter();
-        var bec = new BigEndianBitConverter();
+        // // Our converters; we really only want the big endian one.
+        // var lec = new LittleEndianBitConverter();
+        // var bec = new BigEndianBitConverter();
 
-        Console.WriteLine("Input: {0}", sample);
-        Console.WriteLine("       {0}", test.ToByteString());
-        Console.WriteLine("");
+        // Console.WriteLine("Input: {0}", sample);
+        // Console.WriteLine("       {0}", test.ToByteString());
+        // Console.WriteLine("");
 
-        // This shows that the internal BitConverter is little endian because
-        // the local machine is little endian, but using MiscUtils we can
-        // force the endian.
-        Console.WriteLine("======= Decoding the byte array ===============");
-        Console.WriteLine("BitConverter => {0}", BitConverter.ToUInt32(test, 0));
-        Console.WriteLine("LittleEndianBitConverter => {0}", lec.ToUInt32(test, 0));
-        Console.WriteLine("BigEndianBitConverter => {0}", bec.ToUInt32(test, 0));
+        // // This shows that the internal BitConverter is little endian because
+        // // the local machine is little endian, but using MiscUtils we can
+        // // force the endian.
+        // Console.WriteLine("======= Decoding the byte array ===============");
+        // Console.WriteLine("BitConverter => {0}", BitConverter.ToUInt32(test, 0));
+        // Console.WriteLine("LittleEndianBitConverter => {0}", lec.ToUInt32(test, 0));
+        // Console.WriteLine("BigEndianBitConverter => {0}", bec.ToUInt32(test, 0));
 
-        // This tests going the other way; given our input value, convert it to
-        // a byte array and display it using the extension method. Again the
-        // internal converter is always little endian.
-        Console.WriteLine("");
-        Console.WriteLine("======= Encoding the byte array ===============");
-        Console.WriteLine("BitConverter => {0}", BitConverter.GetBytes(sample).ToByteString());
-        Console.WriteLine("LittleEndianBitConverter => {0}", lec.GetBytes(sample).ToByteString());
-        Console.WriteLine("BigEndianBitConverter => {0}", bec.GetBytes(sample).ToByteString());
+        // // This tests going the other way; given our input value, convert it to
+        // // a byte array and display it using the extension method. Again the
+        // // internal converter is always little endian.
+        // Console.WriteLine("");
+        // Console.WriteLine("======= Encoding the byte array ===============");
+        // Console.WriteLine("BitConverter => {0}", BitConverter.GetBytes(sample).ToByteString());
+        // Console.WriteLine("LittleEndianBitConverter => {0}", lec.GetBytes(sample).ToByteString());
+        // Console.WriteLine("BigEndianBitConverter => {0}", bec.GetBytes(sample).ToByteString());
 
-        // Allocate a byte array and put our data into it
-        byte[] myArray = new byte[8];
+        // // Allocate a byte array and put our data into it
+        // byte[] myArray = new byte[8];
 
-        // Just as a test, this is the method for quickly copying data from one
-        // array to another, should that be needed.
-        Console.WriteLine("");
-        Console.WriteLine("======= Encoding the byte array ===============");
-        Console.WriteLine("Original: {0}", myArray.ToByteString());
+        // // Just as a test, this is the method for quickly copying data from one
+        // // array to another, should that be needed.
+        // Console.WriteLine("");
+        // Console.WriteLine("======= Encoding the byte array ===============");
+        // Console.WriteLine("Original: {0}", myArray.ToByteString());
 
-        Buffer.BlockCopy(test, 0, myArray, 2, 4);
-        Console.WriteLine("Copied: {0}", myArray.ToByteString());
-        Console.WriteLine("BigEndianBitConverter => {0}", bec.ToUInt32(myArray, 2));
+        // Buffer.BlockCopy(test, 0, myArray, 2, 4);
+        // Console.WriteLine("Copied: {0}", myArray.ToByteString());
+        // Console.WriteLine("BigEndianBitConverter => {0}", bec.ToUInt32(myArray, 2));
 
-        // byte[] intro = new byte[] {0, 0, 1};
-        // byte[] error = new byte[] {0, 1, 73, 150, 2, 210, 0, 0, 0, 57, 73, 32, 97, 109,
-        //                 32, 116, 104, 101, 32, 101, 114, 114, 111, 114, 32, 109, 101,
-        //                 115, 115, 97, 103, 101, 44, 32, 97, 110, 100, 32, 73, 39, 109,
-        //                 32, 115, 111, 109, 101, 32, 110, 117, 109, 98, 101, 114, 32,
-        //                 111, 102, 32, 98, 121, 116, 101, 115, 32, 108, 111, 110, 103};
+        // // byte[] intro = new byte[] {0, 0, 1};
+        // // byte[] error = new byte[] {0, 1, 73, 150, 2, 210, 0, 0, 0, 57, 73, 32, 97, 109,
+        // //                 32, 116, 104, 101, 32, 101, 114, 114, 111, 114, 32, 109, 101,
+        // //                 115, 115, 97, 103, 101, 44, 32, 97, 110, 100, 32, 73, 39, 109,
+        // //                 32, 115, 111, 109, 101, 32, 110, 117, 109, 98, 101, 114, 32,
+        // //                 111, 102, 32, 98, 121, 116, 101, 115, 32, 108, 111, 110, 103};
 
-        byte[] intro = new IntroductionMessage().encode();
-        byte[] error = new ErrorMessage(987654321, "Blast Off!").encode();
+        // byte[] intro = new IntroductionMessage().encode();
+        // byte[] error = new ErrorMessage(987654321, "Blast Off!").encode();
 
-        try
-        {
-            Console.WriteLine("{0}", MessageFactory.from_data(intro));
-            Console.WriteLine("{0}", MessageFactory.from_data(error));
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine("Error: {0}", e);
-        }
+        // try
+        // {
+        //     Console.WriteLine("{0}", MessageFactory.from_data(intro));
+        //     Console.WriteLine("{0}", MessageFactory.from_data(error));
+        // }
+        // catch (Exception e)
+        // {
+        //     Console.WriteLine("Error: {0}", e);
+        // }
 
-        Console.WriteLine("Done");
+        // Console.WriteLine("Done");
         return 0;
     }
 }
