@@ -6,15 +6,15 @@ using System.Threading;
 using MiscUtil.Conversion;
 
 // The state object for reading client data.
-public class StateObject
+public class BuildClient
 {
     // The socket that represents the client.
-    public Socket workSocket = null;
+    public Socket socket = null;
 
-    // The size of the receive buffer for this client, as well as an array of
-    // bytes exactly that big.
-    public const int BufferSize = 1024;
-    public byte[] buffer = new byte[BufferSize];
+    // The receive readBuffer for this client; we track both an array as well as
+    // the size of that array.
+    public const int ReadBufferSize = 1024;
+    public byte[] readBuffer = new byte[ReadBufferSize];
 
     // The data string that has been received so far.
     public StringBuilder sb = new StringBuilder();
@@ -34,10 +34,10 @@ public class AsynchronousSocketListener
     public static void StartListening()
     {
         // Look up the IP address of our local socket by figuring out what our
-        // DNS name is and then resolving it to an IP. For expediency we use
-        // the first resolved result (which as pointed out in the sample client
-        // code may possibly be nondeterministic if it happens that the DNS
-        // returns an IPv6 here and an IPv4 later for the client or something).
+        // DNS name is and then resolving it to an IP. For expediency we use the
+        // first resolved result (which as pointed out in the sample client code
+        // may possibly be nondeterministic if it happens that the DNS returns
+        // an IPv6 here and an IPv4 later for the client or something).
         IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
         IPAddress ipAddress = ipHostInfo.AddressList[0];
 
@@ -65,8 +65,8 @@ public class AsynchronousSocketListener
                 // Reset our event.
                 allDone.Reset();
 
-                // Start up an asynchronous accept operation; we need to pass
-                // a callback that knows how to handle an accept and the socket
+                // Start up an asynchronous accept operation; we need to pass a
+                // callback that knows how to handle an accept and the socket
                 // that is doing the listening.
                 listener.BeginAccept(
                     new AsyncCallback(AcceptCallback),
@@ -103,8 +103,8 @@ public class AsynchronousSocketListener
 
         // Create a new state object to wrap this particular client and set the
         // new socket handle in.
-        StateObject state = new StateObject();
-        state.workSocket = handler;
+        BuildClient client = new BuildClient();
+        client.socket = handler;
 
         // Start an asynchronous receive operation for this client. This tells
         // the underlying API to read data into the buffer for this client
@@ -115,8 +115,9 @@ public class AsynchronousSocketListener
         // Here the state provided is an actual object that wraps all of the
         // information about the client (whereas above the state was just the
         // listener directly).
-        handler.BeginReceive (state.buffer, 0, StateObject.BufferSize, 0,
-                             new AsyncCallback(ReadCallback), state);
+        handler.BeginReceive (client.readBuffer, 0, BuildClient.ReadBufferSize,
+                              SocketFlags.None, new AsyncCallback(ReadCallback),
+                              client);
     }
 
     // This handles a receive event on a particular client socket that has
@@ -129,13 +130,13 @@ public class AsynchronousSocketListener
         // From the state of the event, get our the state object that wraps all
         // of the information for this client, and then get the socket out of
         // it.
-        StateObject state = (StateObject) ar.AsyncState;
-        Socket handler = state.workSocket;
+        BuildClient client = (BuildClient) ar.AsyncState;
+        Socket socket = client.socket;
 
         // Perform the actual receive now; the result is the number of bytes
-        // read, which can conceivably be 0; we only need to worry about
-        // doing something if we actually got some data.
-        int bytesRead = handler.EndReceive(ar);
+        // read, which can conceivably be 0; we only need to worry about doing
+        // something if we actually got some data.
+        int bytesRead = socket.EndReceive(ar);
         if (bytesRead > 0)
         {
             Console.WriteLine("Read {0} bytes", bytesRead);
@@ -147,65 +148,66 @@ public class AsynchronousSocketListener
             // particularly bad idea if there is a split receive; I don't know
             // if dotNET can handle partial encoding, but since this is a one
             // time call I'm assuming not.
-            state.sb.Append(Encoding.UTF8.GetString(state.buffer, 0, bytesRead));
+            client.sb.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
 
             // See if the special terminator value is in the string; if it is,
             // then we can echo it back all accumulated data to the client now.
-            content = state.sb.ToString();
+            content = client.sb.ToString();
             if (content.IndexOf("<EOF>") > -1)
             {
                 // Display the content, then transmit it to the other end.
                 Console.WriteLine("Read {0} total bytes from client.\n Data : {1}",
                     content.Length, content);
-                Send(handler, content);
+                Send(socket, content);
             }
             else
             {
                 // We haven't received the terminator yet, so start up a new
                 // receive operation to get more data.
-                handler.BeginReceive(state.buffer, 0, StateObject.BufferSize, 0,
-                                     new AsyncCallback(ReadCallback), state);
+                socket.BeginReceive(client.readBuffer, 0, BuildClient.ReadBufferSize,
+                                    SocketFlags.None, new AsyncCallback(ReadCallback),
+                                    client);
             }
         }
     }
 
-    // This handles a send to a particular client socket that has connected.
-    // The string of data provided will be transmitted to the remote end of
-    // the connection.
-    private static void Send(Socket handler, String data)
+    // This handles a send to a particular client socket that has connected. The
+    // string of data provided will be transmitted to the remote end of the
+    // connection.
+    private static void Send(Socket socket, String data)
     {
         // Convert the string into bytes for the trip back.
         byte[] byteData = Encoding.UTF8.GetBytes(data);
 
-        // Start the transmission. As in the accept and receive, we need to
-        // tell the socket to start sending data from the given buffer, starting
-        // at the beginning of the buffer and writing all of the data, with
-        // no socket options.
+        // Start the transmission. As in the accept and receive, we need to tell
+        // the socket to start sending data from the given buffer, starting at
+        // the beginning of the buffer and writing all of the data, with no
+        // socket options.
         //
         // We again need to provide a handler for when the send completes.
-        handler.BeginSend(byteData, 0, byteData.Length, 0,
-                         new AsyncCallback(SendCallback), handler);
+        socket.BeginSend(byteData, 0, byteData.Length, SocketFlags.None,
+                         new AsyncCallback(SendCallback), socket);
     }
 
     // This handles a send event on a particular client socket that has
-    // connected. We transmit back to them the data that we originally read,
-    // as a sort of echo.
+    // connected. We transmit back to them the data that we originally read, as
+    // a sort of echo.
     private static void SendCallback(IAsyncResult ar)
     {
         try
         {
             // Get the socket out of the state object that was given to us.
-            Socket handler = (Socket) ar.AsyncState;
+            Socket socket = (Socket) ar.AsyncState;
 
             // Complete the transmission of the data to the remote end and
             // indicate that we did so.
-            int bytesSent = handler.EndSend(ar);
+            int bytesSent = socket.EndSend(ar);
             Console.WriteLine("Sent {0} bytes to client.", bytesSent);
 
             // Shut down the socket and close it. It's nice to see that this
             // library includes the proper notion of shutting things down.
-            handler.Shutdown(SocketShutdown.Both);
-            handler.Close();
+            socket.Shutdown(SocketShutdown.Both);
+            socket.Close();
             Console.WriteLine("Closing connection");
         }
         catch (Exception e)
