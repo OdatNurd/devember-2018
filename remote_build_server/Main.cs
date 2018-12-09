@@ -137,37 +137,41 @@ public class AsynchronousSocketListener
         // read, which can conceivably be 0; we only need to worry about doing
         // something if we actually got some data.
         int bytesRead = socket.EndReceive(ar);
-        if (bytesRead > 0)
+        if (bytesRead == 0)
         {
-            Console.WriteLine("Read {0} bytes", bytesRead);
-            // Convert the data from the buffer into a UTF-8 String and append
-            // it to the string builder as accumulated data for this client.
-            //
-            // NOTE: The original example use ASCII but the client command uses
-            // UTF-8 so that has been changed here. There may or may not be a
-            // particularly bad idea if there is a split receive; I don't know
-            // if dotNET can handle partial encoding, but since this is a one
-            // time call I'm assuming not.
-            client.sb.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
+            Console.WriteLine("Client closed connection");
+            return;
+        }
 
-            // See if the special terminator value is in the string; if it is,
-            // then we can echo it back all accumulated data to the client now.
-            content = client.sb.ToString();
-            if (content.IndexOf("<EOF>") > -1)
-            {
-                // Display the content, then transmit it to the other end.
-                Console.WriteLine("Read {0} total bytes from client.\n Data : {1}",
-                    content.Length, content);
-                Send(socket, content);
-            }
-            else
-            {
-                // We haven't received the terminator yet, so start up a new
-                // receive operation to get more data.
-                socket.BeginReceive(client.readBuffer, 0, BuildClient.ReadBufferSize,
-                                    SocketFlags.None, new AsyncCallback(ReadCallback),
-                                    client);
-            }
+        Console.WriteLine("Read {0} bytes", bytesRead);
+
+        // Convert the data from the buffer into a UTF-8 String and append
+        // it to the string builder as accumulated data for this client.
+        //
+        // NOTE: The original example use ASCII but the client command uses
+        // UTF-8 so that has been changed here. There may or may not be a
+        // particularly bad idea if there is a split receive; I don't know
+        // if dotNET can handle partial encoding, but since this is a one
+        // time call I'm assuming not.
+        client.sb.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
+
+        // See if the special terminator value is in the string; if it is,
+        // then we can echo it back all accumulated data to the client now.
+        content = client.sb.ToString();
+        if (content.IndexOf("<EOF>") > -1)
+        {
+            // Display the content, then transmit it to the other end.
+            Console.WriteLine("Read {0} total bytes from client.\n Data : {1}",
+                content.Length, content);
+            Send(socket, content);
+        }
+        else
+        {
+            // We haven't received the terminator yet, so start up a new
+            // receive operation to get more data.
+            socket.BeginReceive(client.readBuffer, 0, BuildClient.ReadBufferSize,
+                                SocketFlags.None, new AsyncCallback(ReadCallback),
+                                client);
         }
     }
 
