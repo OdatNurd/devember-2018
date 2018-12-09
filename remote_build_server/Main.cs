@@ -11,13 +11,19 @@ public class BuildClient
     // The socket that represents the client.
     public Socket socket = null;
 
-    // The receive readBuffer for this client; we track both an array as well as
+    // The receive buffer for this client; we track both an array as well as
     // the size of that array.
     public const int ReadBufferSize = 1024;
     public byte[] readBuffer = new byte[ReadBufferSize];
 
+    // The send buffer for this client. This gets assigned when we receive a
+    // complete message, and tracks the bytes to send. The bytesSent value is
+    // used to indicate how many bytes were actually transmitted so far.
+    public byte[] sendBuffer;
+    public int bytesSent;
+
     // The data string that has been received so far.
-    public StringBuilder sb = new StringBuilder();
+    public StringBuilder stringBuff = new StringBuilder();
 }
 
 
@@ -153,17 +159,17 @@ public class AsynchronousSocketListener
         // particularly bad idea if there is a split receive; I don't know
         // if dotNET can handle partial encoding, but since this is a one
         // time call I'm assuming not.
-        client.sb.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
+        client.stringBuff.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
 
         // See if the special terminator value is in the string; if it is,
         // then we can echo it back all accumulated data to the client now.
-        content = client.sb.ToString();
+        content = client.stringBuff.ToString();
         if (content.IndexOf("<EOF>") > -1)
         {
             // Display the content, then transmit it to the other end.
             Console.WriteLine("Read {0} total bytes from client.\n Data : {1}",
                 content.Length, content);
-            Send(socket, content);
+            Send(client, content);
         }
         else
         {
@@ -178,10 +184,11 @@ public class AsynchronousSocketListener
     // This handles a send to a particular client socket that has connected. The
     // string of data provided will be transmitted to the remote end of the
     // connection.
-    private static void Send(Socket socket, String data)
+    private static void Send(BuildClient client, String data)
     {
         // Convert the string into bytes for the trip back.
-        byte[] byteData = Encoding.UTF8.GetBytes(data);
+        client.sendBuffer = Encoding.UTF8.GetBytes(data);
+        client.bytesSent = 0;
 
         // Start the transmission. As in the accept and receive, we need to tell
         // the socket to start sending data from the given buffer, starting at
@@ -189,8 +196,9 @@ public class AsynchronousSocketListener
         // socket options.
         //
         // We again need to provide a handler for when the send completes.
-        socket.BeginSend(byteData, 0, byteData.Length, SocketFlags.None,
-                         new AsyncCallback(SendCallback), socket);
+        client.socket.BeginSend(client.sendBuffer, 0, client.sendBuffer.Length,
+                                SocketFlags.None,
+                                new AsyncCallback(SendCallback), client);
     }
 
     // This handles a send event on a particular client socket that has
@@ -200,18 +208,35 @@ public class AsynchronousSocketListener
     {
         try
         {
-            // Get the socket out of the state object that was given to us.
-            Socket socket = (Socket) ar.AsyncState;
+            BuildClient client = (BuildClient) ar.AsyncState;
+            Socket socket = client.socket;
 
             // Complete the transmission of the data to the remote end and
             // indicate that we did so.
             int bytesSent = socket.EndSend(ar);
             Console.WriteLine("Sent {0} bytes to client.", bytesSent);
+            client.bytesSent += bytesSent;
 
-            // Shut down the socket and close it. It's nice to see that this
-            // library includes the proper notion of shutting things down.
-            socket.Shutdown(SocketShutdown.Both);
-            socket.Close();
+            if (client.bytesSent == client.sendBuffer.Length)
+            {
+                // Shut down the socket and close it. It's nice to see that this
+                // library includes the proper notion of shutting things down.
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Close();
+                Console.WriteLine("Closing connection");
+            }
+            else
+            {
+                client.socket.BeginSend(client.sendBuffer, client.bytesSent,
+                                        client.sendBuffer.Length - client.bytesSent,
+                                        SocketFlags.None,
+                                        new AsyncCallback(SendCallback), client);
+            }
+
+        }
+        catch (SocketException se)
+        {
+            Console.WriteLine("Socket Error: {0}", se.Message);
             Console.WriteLine("Closing connection");
         }
         catch (Exception e)
