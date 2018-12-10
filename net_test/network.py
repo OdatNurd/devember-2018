@@ -481,7 +481,7 @@ def test():
 mgr = ConnectionManager()
 mgr.startup()
 
-conn = mgr.connect("localhost", 7)
+conn = mgr.connect("dart", 50000)
 # mgr.connect("dart", 7)
 # conn1 = mgr.connect("dart", 7)
 
