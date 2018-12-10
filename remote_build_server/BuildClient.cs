@@ -20,8 +20,8 @@ public class BuildClient
     public byte[] sendBuffer;
     public int bytesSent;
 
-    // The data string that has been received so far.
-    public StringBuilder stringBuff = new StringBuilder();
+    // The data for the message that we're currently reading.
+    public PartialMessage inMsg = new PartialMessage();
 
     /// <summary>
     /// Create a new client object that's set up to talk over the provided
@@ -79,8 +79,6 @@ public class BuildClient
     // for use later.
     public void ReadCallback(IAsyncResult ar)
     {
-        String content = String.Empty;
-
         // From the state of the event, get our the state object that wraps all
         // of the information for this client, and then get the socket out of
         // it.
@@ -97,35 +95,53 @@ public class BuildClient
             return;
         }
 
-        Console.WriteLine("Read {0} bytes", bytesRead);
+        Console.WriteLine("==> Read {0} bytes", bytesRead);
 
-        // Convert the data from the buffer into a UTF-8 String and append
-        // it to the string builder as accumulated data for this client.
-        //
-        // NOTE: The original example use ASCII but the client command uses
-        // UTF-8 so that has been changed here. There may or may not be a
-        // particularly bad idea if there is a split receive; I don't know
-        // if dotNET can handle partial encoding, but since this is a one
-        // time call I'm assuming not.
-        client.stringBuff.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
-
-        // See if the special terminator value is in the string; if it is,
-        // then we can echo it back all accumulated data to the client now.
-        content = client.stringBuff.ToString();
-        if (content.IndexOf("<EOF>") > -1)
+        int bytesUsed = 0;
+        while (bytesUsed != bytesRead)
         {
-            // Display the content, then transmit it to the other end.
-            Console.WriteLine("Read {0} total bytes from client.\n Data : {1}",
-                content.Length, content);
+            // Give some bytes to the current partial message so it can
+            // reconstruct itself.
+            bytesUsed += inMsg.GiveBytes(client.readBuffer, bytesRead, bytesUsed);
 
-            client.sendBuffer = Encoding.UTF8.GetBytes(content);
-            client.bytesSent = 0;
-            client.BeginSending();
+            if (inMsg.IsComplete())
+            {
+                var msg = inMsg.getMessage();
+                Console.WriteLine("Read message: {0}", msg);
+                inMsg = new PartialMessage();
+            }
         }
-        else
-            // We haven't received the terminator yet, so start up a new
-            // receive operation to get more data.
-            client.BeginReading();
+
+        // End by getting ready to read more data.
+        client.BeginReading();
+
+        // // Convert the data from the buffer into a UTF-8 String and append
+        // // it to the string builder as accumulated data for this client.
+        // //
+        // // NOTE: The original example use ASCII but the client command uses
+        // // UTF-8 so that has been changed here. There may or may not be a
+        // // particularly bad idea if there is a split receive; I don't know
+        // // if dotNET can handle partial encoding, but since this is a one
+        // // time call I'm assuming not.
+        // client.stringBuff.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
+
+        // // See if the special terminator value is in the string; if it is,
+        // // then we can echo it back all accumulated data to the client now.
+        // content = client.stringBuff.ToString();
+        // if (content.IndexOf("<EOF>") > -1)
+        // {
+        //     // Display the content, then transmit it to the other end.
+        //     Console.WriteLine("Read {0} total bytes from client.\n Data : {1}",
+        //         content.Length, content);
+
+        //     client.sendBuffer = Encoding.UTF8.GetBytes(content);
+        //     client.bytesSent = 0;
+        //     client.BeginSending();
+        // }
+        // else
+        //     // We haven't received the terminator yet, so start up a new
+        //     // receive operation to get more data.
+        //     client.BeginReading();
     }
 
     // This handles a send event on a particular client socket that has
