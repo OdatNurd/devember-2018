@@ -6,10 +6,37 @@ import queue
 import inspect
 import struct
 import socket
+import select
+import os
 import time
+import textwrap
 
-from .messages import ProtocolMessage, IntroductionMessage, ErrorMessage
+from .messages import ProtocolMessage, IntroductionMessage
+from .messages import MessageMessage, ErrorMessage
 from .test_client import log
+
+
+### ---------------------------------------------------------------------------
+
+
+# Our global connection manager object
+mgr = None
+
+
+### ---------------------------------------------------------------------------
+
+
+def plugin_loaded():
+    global mgr
+    mgr = ConnectionManager()
+    mgr.startup()
+
+
+def plugin_unloaded():
+    msg.shutdown()
+
+
+### ---------------------------------------------------------------------------
 
 
 class ConnectionManager():
@@ -26,10 +53,11 @@ class ConnectionManager():
     calls to delegate network activity to the appropriate client.
     """
     def __init__(self):
-        self.thr_event = Event()
-        self.net_thread = NetworkThread(self.thr_event)
-        self.connections = list()
         self.conn_lock = Lock()
+        self.connections = list()
+        self.thr_event = Event()
+        self.net_thread = NetworkThread(self.conn_lock, self.connections,
+                                        self.thr_event)
 
     def startup(self):
         """
@@ -58,6 +86,10 @@ class ConnectionManager():
         self.thr_event.set()
         self.net_thread.join(0.25)
 
+        with self.conn_lock:
+            for connection in self.connections:
+                self._close_connection(connection)
+
     def connect(self, host, port):
         """
         Return: Connection
@@ -68,10 +100,41 @@ class ConnectionManager():
         This connection is added to our internal list.
         """
         with self.conn_lock:
-            new_connection = Connection(host, port)
-            self.connections.append(new_connection)
+            connection = self._open_connection(host, port)
+            self.connections.append(connection)
 
-        return new_connection
+        return connection
+
+    def _open_connection(self, host, port):
+        """
+        Do the underlying work of actually opening up a brand new connection
+        to the provided host and port.
+        """
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.setblocking(False)
+            sock.connect((host, port))
+        except BlockingIOError:
+            pass
+
+        return Connection(self, sock, host, port)
+
+    def _close_connection(self, connection):
+        """
+        Given a connection object, attempt to gracefully close it.
+        """
+        log("** Gracefully closing {0}".format(connection))
+        if connection.socket:
+            try:
+                connection.socket.shutdown(socket.SHUT_RDWR)
+                connection.socket.close()
+
+            except:
+                pass
+
+            finally:
+                connection.socket = None
+                connection.connected = False
 
     def find_connection(self, host=None, port=None):
         """
@@ -96,38 +159,59 @@ class ConnectionManager():
 
         return retcons
 
+    def _remove(self, connection):
+        """
+        Remove the provided connection from the list of connections that we
+        are currently storing.
+        """
+        with self.conn_lock:
+            self._close_connection(connection)
+            self.connections[:] = [conn for conn in self.connections
+                                        if conn is not connection]
+
+
+### ---------------------------------------------------------------------------
+
 
 class Connection():
     """
     This class wraps a connection to the remote server. They are handed out by
     the connection manager in response to opening a connection.
     """
-    def __init__(self, host, port):
+    def __init__(self, mgr, socket, host, port):
         """
         Create a new connection to the provided host and port combination.
         This should only be called by the connection manager, which will hold
         onto the connection.
         """
+        self.manager = mgr
         self.send_queue = queue.Queue()
         self.recv_queue = queue.Queue()
 
         self.host = host;
         self.port = port
 
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.setblocking(False)
+        self.socket = socket
+        self.connected = False
+
+        self.send_data = None
+        self.receive_data = bytearray()
+        self.expected_length = None
 
         log("  -- Creating connection: {0}".format(self))
 
     def __del__(self):
         log("  -- Destroying connection: {0}".format(self))
-        self.close()
+        # don't close here; assume the manager will close us before it goes
+        # away.
+        # self.close()
 
     def __str__(self):
-        return "<Connection host='{0}:{1}' socket={2} out={3} in={4}>".format(
-            self.host, self.port, self.socket.fileno(),
+        return "<Connection host='{0}:{1}' socket={2} out={3} in={4}{5}>".format(
+            self.host, self.port, self.socket.fileno() if self.socket else None,
             self.send_queue.qsize(),
-            self.recv_queue.qsize())
+            self.recv_queue.qsize(),
+            " CONNECTED" if self.connected else "")
 
     def __repr__(self):
         return str(self)
@@ -139,7 +223,7 @@ class Connection():
 
         This would go into the input queue.
         """
-        self.send_queue.put(protocolMsgInstance)
+        self.send_queue.put(protocolMsgInstance.encode())
 
     def receive(self):
         """
@@ -192,13 +276,7 @@ class Connection():
         it to send any partial sends. We may also want to make it transmit a
         graceful goodbye message or something.
         """
-        # TODO: Remove ourselves from the connection list in the manager
-        if self.socket:
-            try:
-                self.socket.shutdown(socket.SHUT_RDWR)
-                self.socket.close()
-            except:
-                pass
+        self.manager._remove(self)
 
 
     def fileno(self):
@@ -208,7 +286,7 @@ class Connection():
         from our socket.
         """
         if self.socket:
-            return socket.fileno()
+            return self.socket.fileno()
 
         return None
 
@@ -223,7 +301,12 @@ class Connection():
         The network thread uses this to know if this client cares to know if
         it is write-able or not.
         """
-        return self.send_queue.qsize() > 0
+        if self.socket:
+            return (not self.connected or
+                    self.send_queue.qsize() > 0 or
+                    self.send_data is not None)
+
+        return False
 
     def _send(self):
         """
@@ -237,7 +320,38 @@ class Connection():
         If we can't send a whole message, track what we didn't send for later
         calls.
         """
-        pass
+        if not self.connected:
+            code = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+            if code == 0:
+                self.connected = True
+                log("Connection established: {0}".format(self))
+            else:
+                log("Connection failed: {0}".format(os.strerror(code)))
+                self.close()
+                return
+
+        try:
+            for _ in range(10):
+                if self.send_data is None:
+                    self.send_data = self.send_queue.get_nowait()
+
+                sent = self.socket.send(self.send_data)
+                # sent = self.socket.send(self.send_data[:1])
+                self.send_data = self.send_data[sent:]
+                if not self.send_data:
+                    self.send_data = None
+                else:
+                    break
+
+        except queue.Empty:
+            pass
+
+        except BlockingIOError:
+            pass
+
+        except Exception as e:
+            log(" *** Error while sending: {0}".format(e))
+            self.close()
 
     def _receive(self):
         """
@@ -248,7 +362,40 @@ class Connection():
         socket call, queuing any that we fully read and tracking partial
         reads for later.
         """
-        pass
+        try:
+            new_data = self.socket.recv(4096)
+            if not new_data:
+                return
+
+            self.receive_data.extend(new_data)
+
+            while True:
+                if self.expected_length is None:
+                    if len(self.receive_data) >= 4:
+                        self.expected_length, = struct.unpack_from(">I", self.receive_data)
+                        self.receive_data = self.receive_data[4:]
+                    else:
+                        break
+
+                if len(self.receive_data) >= self.expected_length:
+                    msg_data = self.receive_data[:self.expected_length]
+                    self.receive_data = self.receive_data[self.expected_length:]
+                    self.expected_length = None
+
+                    self.recv_queue.put(ProtocolMessage.from_data(msg_data))
+                else:
+                    break
+
+        except BlockingIOError:
+            pass
+
+        except Exception as e:
+            log(" *** Error while receiving: {0}".format(e))
+            self.close()
+            return
+
+
+### ---------------------------------------------------------------------------
 
 
 class NetworkThread(Thread):
@@ -256,10 +403,12 @@ class NetworkThread(Thread):
     The background thread for doing all of our socket I/O. This ensures that
     we keep doing sends and receives no matter what else is happening.
     """
-    def __init__(self, event):
-        super().__init__()
-        self.event = event
+    def __init__(self, lock, connections, event):
         log("== Creating network thread")
+        super().__init__()
+        self.conn_lock = lock
+        self.connections = connections
+        self.event = event
 
     def __del__(self):
         log("== Destroying network thread")
@@ -274,8 +423,27 @@ class NetworkThread(Thread):
         data pending send for writing, and needs to safely busy loop when there
         are no connections.
         """
-        log("== Launching network thread")
+        log("== Entering network loop")
         while not self.event.is_set():
-            time.sleep(0.25)
+            with self.conn_lock:
+                readable = [c for c in self.connections if c.socket is not None]
+                writable = [c for c in self.connections if c._is_writeable()]
+
+            if not readable and not writable:
+                # log("*** Network thread has no connections to service")
+                time.sleep(0.25)
+                continue
+
+            rset, wset, _ = select.select(readable, writable, [], 0.25)
+
+            for conn in rset:
+                conn._receive()
+
+            for conn in wset:
+                conn._send()
+
 
         log("== Network thread is gracefully ending")
+
+
+### ---------------------------------------------------------------------------
