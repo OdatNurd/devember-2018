@@ -36,6 +36,6 @@ public class IntroductionMessage : IProtocolMessage
 
     public override string ToString()
     {
-        return String.Format("<IntroductionMessage version={0}>", ProtocolVersion);
+        return String.Format("<Introduction version={0}>", ProtocolVersion);
     }
 }

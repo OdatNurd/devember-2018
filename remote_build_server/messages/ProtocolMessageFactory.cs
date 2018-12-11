@@ -8,7 +8,8 @@ using MiscUtil.Conversion;
 public enum MessageType
 {
     Introduction = 0,
-    Error = 1,
+    Message = 1,
+    Error = 2,
 }
 
 // An interface that represents a protocol message;
@@ -33,6 +34,9 @@ public class ProtocolMessageFactory
         {
             case MessageType.Introduction:
                 return new IntroductionMessage(data);
+
+            case MessageType.Message:
+                return new Message(data);
 
             case MessageType.Error:
                 return new ErrorMessage(data);

@@ -46,7 +46,7 @@ public class ErrorMessage : IProtocolMessage
 
     public override string ToString()
     {
-        return String.Format("<ErrorMessage code={0} msg='{1}'>",
+        return String.Format("<Error code={0} msg='{1}'>",
             Code, Message);
     }
 }

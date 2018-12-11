@@ -81,6 +81,9 @@ class IntroductionMessage(ProtocolMessage):
     """
     protocol_version = 1
 
+    def __str__(self):
+        return "<Introduction version={0}>".format(self.protocol_version)
+
     @classmethod
     def msg_id(cls):
         return 0
@@ -101,6 +104,41 @@ class IntroductionMessage(ProtocolMessage):
 ProtocolMessage.register(IntroductionMessage)
 
 
+class MessageMessage(ProtocolMessage):
+    """
+    This message is used to report generic message information to the remote
+    end of the connection.
+    """
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return "<Message msg='{0}'>".format(self.msg)
+
+    @classmethod
+    def msg_id(cls):
+        return 1
+
+    @classmethod
+    def decode(cls, data):
+        pre_len = struct.calcsize(">HI")
+        _, msg_len = struct.unpack(">HI", data[:pre_len])
+
+        msg_str, = struct.unpack_from(">%ds" % msg_len, data, pre_len)
+
+        return MessageMessage(msg_str.decode('utf-8'))
+
+    def encode(self):
+        msg_data = self.msg.encode("utf-8")
+        return struct.pack(">IHI%ds" % len(msg_data),
+            2 + 4 + len(msg_data),
+            MessageMessage.msg_id(),
+            len(msg_data),
+            msg_data)
+
+ProtocolMessage.register(MessageMessage)
+
+
 class ErrorMessage(ProtocolMessage):
     """
     This message is used to report an error to the remote end of the
@@ -110,9 +148,13 @@ class ErrorMessage(ProtocolMessage):
         self.error_code = error_code
         self.error_msg = error_msg
 
+    def __str__(self):
+        return "<Error code={0} msg='{1}'>".format(
+            self.error_code, self.error_msg)
+
     @classmethod
     def msg_id(cls):
-        return 1
+        return 2
 
     @classmethod
     def decode(cls, data):
