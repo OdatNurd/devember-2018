@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Collections.Concurrent;
 
 // The state object for reading client data.
 public class BuildClient
@@ -20,6 +21,10 @@ public class BuildClient
     public byte[] sendBuffer;
     public int bytesSent;
 
+    // The queue of messages that should be transmitted to the remote end of the
+    // connection.
+    public ConcurrentQueue<IProtocolMessage> outQueue = new ConcurrentQueue<IProtocolMessage>();
+
     // The data for the message that we're currently reading.
     public PartialMessage inMsg = new PartialMessage();
 
@@ -27,9 +32,20 @@ public class BuildClient
     /// Create a new client object that's set up to talk over the provided
     /// socket connection.
     /// </summary>
-    public BuildClient(Socket socket)
+    public BuildClient(Socket clientSocket)
     {
-        this.socket = socket;
+        socket = clientSocket;
+    }
+
+    /// <summary>
+    /// Queue up the given message for sending to the remote end of this
+    /// client connection.
+    /// </summary>
+    public void Send(IProtocolMessage msg)
+    {
+        outQueue.Enqueue(msg);
+        if (sendBuffer == null)
+            BeginSending();
     }
 
     /// <summary>
@@ -48,8 +64,8 @@ public class BuildClient
         // Here the state provided is an actual object that wraps all of the
         // information about the client (whereas above the state was just the
         // listener directly).
-        socket.BeginReceive(this.readBuffer, 0, BuildClient.ReadBufferSize,
-                            SocketFlags.None, new AsyncCallback(this.ReadCallback),
+        socket.BeginReceive(readBuffer, 0, BuildClient.ReadBufferSize,
+                            SocketFlags.None, new AsyncCallback(ReadCallback),
                             this);
     }
 
@@ -64,14 +80,28 @@ public class BuildClient
     /// </remarks>
     public void BeginSending()
     {
+        // If we're not sending anything yet, then pull a message to send; this
+        // will silently do nothing if there are no more messages to transmit.
+        if (sendBuffer == null)
+        {
+            // Pull out a message to send. If there are no more to send, then
+            // this does nothing and returns.
+            IProtocolMessage msg;
+            if (outQueue.TryDequeue(out msg) == false)
+                return;
+
+            sendBuffer = msg.encode();
+            bytesSent = 0;
+        }
+
         // Start an asynchronous send operaion for this client. This works in
         // the same way as the read code, and the code here assumes that our
         // internal state for what we're sending and how much has been
         // transmitted is set up correctly before this is called.
-        socket.BeginSend(this.sendBuffer, this.bytesSent,
-                         this.sendBuffer.Length - this.bytesSent,
+        socket.BeginSend(sendBuffer, bytesSent,
+                         sendBuffer.Length - bytesSent,
                          SocketFlags.None,
-                         new AsyncCallback(this.SendCallback), this);
+                         new AsyncCallback(SendCallback), this);
     }
 
     // This handles a receive event on a particular client socket that has
@@ -104,44 +134,17 @@ public class BuildClient
             // reconstruct itself.
             bytesUsed += inMsg.GiveBytes(client.readBuffer, bytesRead, bytesUsed);
 
+            // If this message is complete, then echo it back to the other end
+            // and get ready for another received message.
             if (inMsg.IsComplete())
             {
-                var msg = inMsg.getMessage();
-                Console.WriteLine("Read message: {0}", msg);
+                client.Send(inMsg.getMessage());
                 inMsg = new PartialMessage();
             }
         }
 
         // End by getting ready to read more data.
         client.BeginReading();
-
-        // // Convert the data from the buffer into a UTF-8 String and append
-        // // it to the string builder as accumulated data for this client.
-        // //
-        // // NOTE: The original example use ASCII but the client command uses
-        // // UTF-8 so that has been changed here. There may or may not be a
-        // // particularly bad idea if there is a split receive; I don't know
-        // // if dotNET can handle partial encoding, but since this is a one
-        // // time call I'm assuming not.
-        // client.stringBuff.Append(Encoding.UTF8.GetString(client.readBuffer, 0, bytesRead));
-
-        // // See if the special terminator value is in the string; if it is,
-        // // then we can echo it back all accumulated data to the client now.
-        // content = client.stringBuff.ToString();
-        // if (content.IndexOf("<EOF>") > -1)
-        // {
-        //     // Display the content, then transmit it to the other end.
-        //     Console.WriteLine("Read {0} total bytes from client.\n Data : {1}",
-        //         content.Length, content);
-
-        //     client.sendBuffer = Encoding.UTF8.GetBytes(content);
-        //     client.bytesSent = 0;
-        //     client.BeginSending();
-        // }
-        // else
-        //     // We haven't received the terminator yet, so start up a new
-        //     // receive operation to get more data.
-        //     client.BeginReading();
     }
 
     // This handles a send event on a particular client socket that has
@@ -162,15 +165,15 @@ public class BuildClient
 
             if (client.bytesSent == client.sendBuffer.Length)
             {
-                // Shut down the socket and close it. It's nice to see that this
-                // library includes the proper notion of shutting things down.
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
-                Console.WriteLine("Closing connection");
+                Console.WriteLine("Finished message transmission");
+                client.sendBuffer = null;
+                client.bytesSent = 0;
             }
-            else
-                client.BeginSending();
 
+            // Trigger another send; if this send was complete, then this will
+            // check and see if there's another message that we can send, but
+            // if this send was not complete, then we'll try to finish the job.
+            client.BeginSending();
         }
 
         catch (SocketException se)
