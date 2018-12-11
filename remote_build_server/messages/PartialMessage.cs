@@ -60,7 +60,7 @@ public class PartialMessage
             // return back.
             if (bytesUsed == msgLenBytes.Length)
             {
-                var msgLength = MessageFactory.Converter.ToUInt32(msgLenBytes, 0);
+                var msgLength = ProtocolMessageFactory.Converter.ToUInt32(msgLenBytes, 0);
 
                 msgData = new byte[msgLength];
                 bytesUsed = 0;
@@ -101,6 +101,6 @@ public class PartialMessage
         if (IsComplete() == false)
             throw new InvalidOperationException("Message is not complete yet");
 
-        return MessageFactory.from_data(msgData);
+        return ProtocolMessageFactory.from_data(msgData);
     }
 }

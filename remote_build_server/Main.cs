@@ -150,8 +150,8 @@ public class AsynchronousSocketListener
 
         // try
         // {
-        //     Console.WriteLine("{0}", MessageFactory.from_data(intro));
-        //     Console.WriteLine("{0}", MessageFactory.from_data(error));
+        //     Console.WriteLine("{0}", ProtocolMessageFactory.from_data(intro));
+        //     Console.WriteLine("{0}", ProtocolMessageFactory.from_data(error));
         // }
         // catch (Exception e)
         // {
