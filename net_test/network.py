@@ -447,31 +447,6 @@ class NetworkThread(Thread):
 ### ---------------------------------------------------------------------------
 
 
-def message_to_block(data):
-    """
-    Given an encoded message block, create and return a block that wraps it as
-    a block to be transmitted to the remote end.
-
-    The theory here is that writing a message to the opposite end is easier if
-    we can write just a single blob of data in one operation; on the receive
-    end this is not possible because we need to read the length first and then
-    the block.
-    """
-    block = bytearray(len(data) + 4)
-    struct.pack_into(">I", block, 0, len(data))
-    block[4:] = data
-
-    return block
-
-def test():
-    mgr = ConnectionManager()
-    mgr.startup()
-
-    time.sleep(2)
-
-    mgr.shutdown()
-    print("Run complete")
-
 # sublime.set_timeout_async(lambda: test())
 
 mgr = ConnectionManager()
