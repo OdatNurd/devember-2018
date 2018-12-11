@@ -25,10 +25,11 @@ public class IntroductionMessage : IProtocolMessage
 
     public byte[] encode()
     {
-        byte[] msg = new byte[3];
+        byte[] msg = new byte[4 + 3];
 
-        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes((UInt16) MessageType.Introduction), 0, msg, 0, 2);
-        msg[2] = ProtocolVersion;
+        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes((UInt32) 3), 0, msg, 0, 4);
+        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes((UInt16) MessageType.Introduction), 0, msg, 4, 2);
+        msg[6] = ProtocolVersion;
 
         return msg;
     }

@@ -220,12 +220,7 @@ class Connection():
 
         This would go into the input queue.
         """
-        msg = protocolMsgInstance.encode()
-        block = bytearray(len(msg) + 4)
-        struct.pack_into(">I", block, 0, len(msg))
-        block[4:] = msg
-
-        self.send_queue.put(block)
+        self.send_queue.put(protocolMsgInstance.encode())
 
     def receive(self):
         """

@@ -93,7 +93,8 @@ class IntroductionMessage(ProtocolMessage):
         return msg
 
     def encode(self):
-        return struct.pack(">HB",
+        return struct.pack(">IHB",
+            3,
             IntroductionMessage.msg_id(),
             self.protocol_version)
 
@@ -124,7 +125,8 @@ class ErrorMessage(ProtocolMessage):
 
     def encode(self):
         msg_data = self.error_msg.encode("utf-8")
-        return struct.pack(">HII%ds" % len(msg_data),
+        return struct.pack(">IHII%ds" % len(msg_data),
+            2 + 4 + 4 + len(msg_data),
             ErrorMessage.msg_id(),
             self.error_code,
             len(msg_data),

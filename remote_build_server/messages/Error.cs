@@ -33,12 +33,13 @@ public class ErrorMessage : IProtocolMessage
         byte[] msgBytes = Encoding.UTF8.GetBytes(Message);
         UInt32 msgLength = (UInt32) msgBytes.Length;
 
-        byte[] msg = new byte[2 + 4 + 4  + msgLength];
+        byte[] msg = new byte[4 + 2 + 4 + 4 + msgLength];
 
-        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes((UInt16) MessageType.Error), 0, msg, 0, 2);
-        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes(Code), 0, msg, 2, 4);
-        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes(msgLength), 0, msg, 6, 4);
-        Buffer.BlockCopy(msgBytes, 0, msg, 10, (int) msgLength);
+        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes((UInt32) msg.Length - 4), 0, msg, 0, 4);
+        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes((UInt16) MessageType.Error), 0, msg, 4, 2);
+        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes(Code), 0, msg, 6, 4);
+        Buffer.BlockCopy(ProtocolMessageFactory.Converter.GetBytes(msgLength), 0, msg, 10, 4);
+        Buffer.BlockCopy(msgBytes, 0, msg, 14, (int) msgLength);
 
         return msg;
     }
