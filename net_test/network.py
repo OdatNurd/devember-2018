@@ -8,7 +8,8 @@ import os
 import time
 import textwrap
 
-from messages import ProtocolMessage, IntroductionMessage, ErrorMessage
+from messages import ProtocolMessage, IntroductionMessage
+from messages import MessageMessage, ErrorMessage
 
 
 ### ---------------------------------------------------------------------------
@@ -481,16 +482,15 @@ conn = mgr.connect("dart", 50000)
 # conn1 = mgr.connect("dart", 7)
 
 conn.send(IntroductionMessage())
+conn.send(MessageMessage("I am the arbitrary message text!"))
 conn.send(ErrorMessage(77341926, "This is an arbitrary error message. Go us!"))
 # conn1.close()
 # conn1 = None
 
 for x in range(100):
     msg = conn.receive()
-    if isinstance(msg, IntroductionMessage):
-        log("==> Received introduction with protocol version {0}".format(msg.protocol_version))
-    if isinstance(msg, ErrorMessage):
-        log("==> Error Received({0}): {1}".format(msg.error_code, msg.error_msg))
+    if msg is not None:
+        log("==> Received {0}".format(msg))
     time.sleep(0.1)
 
 # print(mgr.find_connection(host="localhost", port=50000))
