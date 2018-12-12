@@ -220,6 +220,8 @@ class Connection():
         self.receive_data = bytearray()
         self.expected_length = None
 
+        self.callback = None
+
         log("  -- Creating connection: {0}".format(self))
 
     def __del__(self):
@@ -277,7 +279,7 @@ class Connection():
         Notifications fire last, so you only get one notification for reception
         no matter how many are read, lets say.
         """
-        pass
+        self.callback = callback
 
     def unregister(self, key):
         """
@@ -299,6 +301,8 @@ class Connection():
         graceful goodbye message or something.
         """
         self.manager._remove(self)
+        self._raise()
+        self.callback = None
 
 
     def fileno(self):
@@ -311,6 +315,14 @@ class Connection():
             return self.socket.fileno()
 
         return None
+
+    def _raise(self):
+        """
+        If there is a registered listener, trigger a callback to let the other
+        end know that there is a change in state for us.
+        """
+        if self.callback:
+            self.callback(self)
 
     def _is_writeable(self):
         """
@@ -353,10 +365,12 @@ class Connection():
                 self.connected = True
                 log("Connection established: {0}:{1}",
                     self.host, self.port, panel=True)
+                self._raise()
             else:
                 log("Connection failed: {0}:{1}: {2}",
                     self.host, self.port, os.strerror(code), panel=True)
                 self.close()
+                self._raise()
                 return
 
         try:
@@ -399,6 +413,8 @@ class Connection():
 
             self.receive_data.extend(new_data)
 
+            got_msg = False
+
             while True:
                 if self.expected_length is None:
                     if len(self.receive_data) >= 4:
@@ -413,8 +429,13 @@ class Connection():
                     self.expected_length = None
 
                     self.recv_queue.put(ProtocolMessage.from_data(msg_data))
+                    got_msg = True
+
                 else:
                     break
+
+            if got_msg:
+                self._raise()
 
         except BlockingIOError:
             pass
