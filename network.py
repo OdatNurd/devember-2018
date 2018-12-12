@@ -85,7 +85,7 @@ class ConnectionManager():
         Called from plugin_loaded() to get things ready for connections when
         the package loads.
         """
-        log("== Connection Manager Initializing")
+        log("=> Connection Manager Initializing")
         self.net_thread.start()
 
     def shutdown(self):
@@ -98,7 +98,7 @@ class ConnectionManager():
         Called from plugin_unloaded() to break all of our connections if we get
         unloaded.
         """
-        log("== Connection Manager Shutting Down")
+        log("=> Connection Manager Shutting Down")
         self.thr_event.set()
         self.net_thread.join(0.25)
 
@@ -134,7 +134,7 @@ class ConnectionManager():
             pass
 
         connection = Connection(self, sock, host, port)
-        log("Connecting to: {0}".format(connection))
+        log("Connecting to: {0}:{1}", host, port, panel=True)
 
         return connection
 
@@ -143,7 +143,9 @@ class ConnectionManager():
         """
         Given a connection object, attempt to gracefully close it.
         """
-        log("** Gracefully closing {0}".format(connection))
+        log("Closing Connection: {0}:{1}",
+            connection.host, connection.port, panel=True)
+
         if connection.socket:
             try:
                 connection.socket.shutdown(socket.SHUT_RDWR)
@@ -349,9 +351,11 @@ class Connection():
             code = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
             if code == 0:
                 self.connected = True
-                log("Connection established: {0}".format(self))
+                log("Connection established: {0}:{1}",
+                    self.host, self.port, panel=True)
             else:
-                log("Connection failed: {0}".format(os.strerror(code)))
+                log("Connection failed: {0}:{1}: {2}",
+                    self.host, self.port, os.strerror(code), panel=True)
                 self.close()
                 return
 
@@ -375,7 +379,8 @@ class Connection():
             pass
 
         except Exception as e:
-            log(" *** Error while sending: {0}".format(e))
+            log("Send Error: {0}:{1}: {2}",
+                self.host, self.port, e, panel=True)
             self.close()
 
     def _receive(self):
@@ -415,7 +420,8 @@ class Connection():
             pass
 
         except Exception as e:
-            log(" *** Error while receiving: {0}".format(e))
+            log("Receive Error: {0}:{1}: {2}",
+                self.host, self.port, e, panel=True)
             self.close()
             return
 
@@ -466,7 +472,6 @@ class NetworkThread(Thread):
 
             for conn in wset:
                 conn._send()
-
 
         log("== Network thread is gracefully ending")
 
