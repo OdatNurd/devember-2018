@@ -34,8 +34,9 @@ def plugin_loaded():
 def plugin_unloaded():
     global netManager
 
-    netManager.shutdown()
-    netManager = None
+    if netManager is not None:
+        netManager.shutdown()
+        netManager = None
 
 
 ### ---------------------------------------------------------------------------
@@ -58,14 +59,19 @@ class SocketTestCommand(sublime_plugin.WindowCommand):
         self.last_msg = msg
         if self.connection is None or self.connection.socket is None:
             self.connection = netManager.connect("dart", 50000)
+            self.connection.register(lambda conn: self.result(conn))
 
         self.connection.send(MessageMessage(msg))
-        sublime.set_timeout(lambda: self.result(), 500)
 
-    def result(self):
-        msg = self.connection.receive()
+    def result(self, connection):
+        log("Callback: {0}:{1}, {2}",
+            connection.host, connection.port,
+            "connected" if connection.connected else "disconnected",
+            panel=True)
+
+        msg = connection.receive()
         if msg is not None:
-            log("Received:\n{0}", msg.msg, dialog=True)
+            log("Received: '{0}'", msg.msg, panel=True)
 
 
 ### ---------------------------------------------------------------------------
