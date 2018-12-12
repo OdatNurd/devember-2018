@@ -13,27 +13,28 @@ import textwrap
 
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
-from .test_client import log
 
 
 ### ---------------------------------------------------------------------------
 
 
-# Our global connection manager object
-mgr = None
+def log(msg, *args, dialog=False, error=False, **kwargs):
+    """
+    Generate a message to the console and optionally as either a message or
+    error dialog. The message will be formatted and dedented before being
+    displayed, and will be prefixed with its origin.
+    """
+    msg = textwrap.dedent(msg.format(*args, **kwargs)).strip()
 
+    if error:
+        print("remote_build:")
+        return sublime.error_message(msg)
 
-### ---------------------------------------------------------------------------
+    for line in msg.splitlines():
+        print("remote_build: {msg}".format(msg=line))
 
-
-def plugin_loaded():
-    global mgr
-    mgr = ConnectionManager()
-    mgr.startup()
-
-
-def plugin_unloaded():
-    msg.shutdown()
+    if dialog:
+        sublime.message_dialog(msg)
 
 
 ### ---------------------------------------------------------------------------
@@ -320,6 +321,11 @@ class Connection():
         If we can't send a whole message, track what we didn't send for later
         calls.
         """
+        # Since sends happen after receives, it's possible that the connection
+        # broke during the receive, in which case we should do nothing here.
+        if self.socket is None:
+            return
+
         if not self.connected:
             code = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
             if code == 0:
@@ -426,7 +432,7 @@ class NetworkThread(Thread):
         log("== Entering network loop")
         while not self.event.is_set():
             with self.conn_lock:
-                readable = [c for c in self.connections if c.socket is not None]
+                readable = [c for c in self.connections if c.connected]
                 writable = [c for c in self.connections if c._is_writeable()]
 
             if not readable and not writable:

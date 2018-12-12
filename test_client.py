@@ -11,29 +11,32 @@ import sys
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
 
-from .network import mgr
+from .network import ConnectionManager, log
 
 
-## ---------------------------------------------------------------------------
+### ---------------------------------------------------------------------------
 
 
-def log(msg, *args, dialog=False, error=False, **kwargs):
-    """
-    Generate a message to the console and optionally as either a message or
-    error dialog. The message will be formatted and dedented before being
-    displayed, and will be prefixed with its origin.
-    """
-    msg = textwrap.dedent(msg.format(*args, **kwargs)).strip()
+# Our global connection manager object
+netManager = None
 
-    if error:
-        print("remote_build:")
-        return sublime.error_message(msg)
 
-    for line in msg.splitlines():
-        print("remote_build: {msg}".format(msg=line))
+### ---------------------------------------------------------------------------
 
-    if dialog:
-        sublime.message_dialog(msg)
+
+def plugin_loaded():
+    global netManager
+
+    netManager = ConnectionManager()
+    netManager.startup()
+
+
+def plugin_unloaded():
+    global netManager
+
+    netManager.shutdown()
+    netManager = None
+
 
 
 ### ---------------------------------------------------------------------------
@@ -54,8 +57,8 @@ class SocketTestCommand(sublime_plugin.WindowCommand):
 
     def test(self, host, port, msg):
         self.last_msg = msg
-        if self.connection is None:
-            self.connection = mgr.connect("dart", 50000)
+        if self.connection is None or self.connection.socket is None:
+            self.connection = netManager.connect("dart", 50000)
 
         self.connection.send(MessageMessage(msg))
         sublime.set_timeout(lambda: self.result(), 500)
