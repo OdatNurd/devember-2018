@@ -118,7 +118,11 @@ class ConnectionManager():
         except BlockingIOError:
             pass
 
-        return Connection(self, sock, host, port)
+        connection = Connection(self, sock, host, port)
+        log("Connecting to: {0}".format(connection))
+
+        return connection
+
 
     def _close_connection(self, connection):
         """
