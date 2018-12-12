@@ -1,0 +1,4 @@
+[
+    { "caption": "-" },
+    { "caption": "Clear Build Output","command": "remote_build_clear_panel" },
+]

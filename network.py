@@ -18,7 +18,7 @@ from .messages import MessageMessage, ErrorMessage
 ### ---------------------------------------------------------------------------
 
 
-def log(msg, *args, dialog=False, error=False, **kwargs):
+def log(msg, *args, dialog=False, error=False, panel=False, **kwargs):
     """
     Generate a message to the console and optionally as either a message or
     error dialog. The message will be formatted and dedented before being
@@ -35,6 +35,21 @@ def log(msg, *args, dialog=False, error=False, **kwargs):
 
     if dialog:
         sublime.message_dialog(msg)
+
+    if panel:
+        window = sublime.active_window()
+        if "output.remote_build" not in window.panels():
+            view = window.create_output_panel("remote_build")
+            view.set_read_only(True)
+            view.settings().set("_rb_net_window", True)
+
+        view = window.find_output_panel("remote_build")
+        view.run_command("append", {
+            "characters": msg + "\n",
+            "force": True,
+            "scroll_to_end": True})
+
+        window.run_command("show_panel", {"panel": "output.remote_build"})
 
 
 ### ---------------------------------------------------------------------------
