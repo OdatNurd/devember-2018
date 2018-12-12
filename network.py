@@ -395,7 +395,7 @@ class Connection():
         try:
             new_data = self.socket.recv(4096)
             if not new_data:
-                return
+                return self.close()
 
             self.receive_data.extend(new_data)
 
