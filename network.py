@@ -11,6 +11,9 @@ import os
 import time
 import textwrap
 
+# https://bitbucket.org/stoneleaf/enum34
+from .enum import Enum
+
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
 
@@ -50,6 +53,27 @@ def log(msg, *args, dialog=False, error=False, panel=False, **kwargs):
             "scroll_to_end": True})
 
         window.run_command("show_panel", {"panel": "output.remote_build"})
+
+
+### ---------------------------------------------------------------------------
+
+
+class Notification(Enum):
+    """
+    An enumeration for that various connection notifications that a Connection
+    instance may raise.
+    """
+    # The connection was closed (either gracefully or due to an error).
+    CLOSED=0
+
+    # The connection has successfully connected
+    CONNECTED=1
+
+    # The connection attempt to the remote host failed.
+    CONNECTION_FAILED=2
+
+    # A message has been received
+    MESSAGE=3
 
 
 ### ---------------------------------------------------------------------------
@@ -266,22 +290,12 @@ class Connection():
         arrives, or the connection breaks, the callback is invoked to tell the
         caller.
 
-        Could be enhanced in the future to also provide notifications on
-        delivery of messages perhaps, or allow for registering specific types
-        of message replies only.
-
-        The return is some value for use in the unregister() call, in case you
-        want to cancel registrations.
-
         Notifications will be raised by using set_timeout() (or the async
         variant) so that the calling code gets handled in the main thread.
-
-        Notifications fire last, so you only get one notification for reception
-        no matter how many are read, lets say.
         """
         self.callback = callback
 
-    def unregister(self, key):
+    def unregister(self):
         """
         Using the key, which was provided by call to register(), cancel all
         notifications from this connection.
@@ -289,7 +303,7 @@ class Connection():
         If the register() method gets smart enough to filter, this should also
         be enhanced.
         """
-        pass
+        self.callback = None
 
     def close(self):
         """
@@ -301,8 +315,8 @@ class Connection():
         graceful goodbye message or something.
         """
         self.manager._remove(self)
-        self._raise()
-        self.callback = None
+        self._raise(Notification.CLOSED)
+
 
 
     def fileno(self):
@@ -316,13 +330,14 @@ class Connection():
 
         return None
 
-    def _raise(self):
+    def _raise(self, notification):
         """
         If there is a registered listener, trigger a callback to let the other
-        end know that there is a change in state for us.
+        end know that there is a change in state for us. The callback is
+        triggered in the main thread in Sublime.
         """
         if self.callback:
-            self.callback(self)
+            sublime.set_timeout(lambda: self.callback(self, notification))
 
     def _is_writeable(self):
         """
@@ -365,12 +380,12 @@ class Connection():
                 self.connected = True
                 log("Connection established: {0}:{1}",
                     self.host, self.port, panel=True)
-                self._raise()
+                self._raise(Notification.CONNECTED)
             else:
                 log("Connection failed: {0}:{1}: {2}",
                     self.host, self.port, os.strerror(code), panel=True)
+                self._raise(Notification.CONNECTION_FAILED)
                 self.close()
-                self._raise()
                 return
 
         try:
@@ -413,8 +428,6 @@ class Connection():
 
             self.receive_data.extend(new_data)
 
-            got_msg = False
-
             while True:
                 if self.expected_length is None:
                     if len(self.receive_data) >= 4:
@@ -429,13 +442,10 @@ class Connection():
                     self.expected_length = None
 
                     self.recv_queue.put(ProtocolMessage.from_data(msg_data))
-                    got_msg = True
+                    self._raise(Notification.MESSAGE)
 
                 else:
                     break
-
-            if got_msg:
-                self._raise()
 
         except BlockingIOError:
             pass
