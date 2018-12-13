@@ -11,7 +11,7 @@ import sys
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
 
-from .network import ConnectionManager, log
+from .network import ConnectionManager, Notification, log
 
 
 ### ---------------------------------------------------------------------------
@@ -59,19 +59,23 @@ class SocketTestCommand(sublime_plugin.WindowCommand):
         self.last_msg = msg
         if self.connection is None or self.connection.socket is None:
             self.connection = netManager.connect("dart", 50000)
-            self.connection.register(lambda conn: self.result(conn))
+            self.connection.register(lambda c,n: self.result(c,n))
 
         self.connection.send(MessageMessage(msg))
 
-    def result(self, connection):
-        log("Callback: {0}:{1}, {2}",
+    def result(self, connection, notification):
+        log("==> Callback: {0}:{1} = {3}, {2}",
             connection.host, connection.port,
             "connected" if connection.connected else "disconnected",
+            notification,
             panel=True)
 
-        msg = connection.receive()
-        if msg is not None:
-            log("Received: '{0}'", msg.msg, panel=True)
+        if notification == Notification.MESSAGE:
+            msg = connection.receive()
+            if msg is None:
+                log(" -> Error: Notification says message, queue says no")
+            else:
+                log("Received: '{0}'", msg.msg, panel=True)
 
 
 ### ---------------------------------------------------------------------------
