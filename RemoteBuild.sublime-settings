@@ -1,0 +1,24 @@
+{
+    // The list of configured hosts that the user can execute builds on.
+    "build_hosts": [
+        // A standard server; has a human readable name, where the connection
+        // should be made, and who to log in as.
+        {
+            "name": "Test Server",
+            "host": "dart",
+            "port": 50000,
+            "username": "tmartin",
+            "password": "1234"
+        },
+
+        // This is similar to the above, but because the password is null you
+        // will be prompted to enter the password when the connection occurs.
+        {
+            "name": "Production",
+            "host": "egg",
+            "port": 50000,
+            "username": "app_one",
+            "password": null,
+        }
+    ]
+}

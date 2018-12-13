@@ -1,0 +1,88 @@
+{
+    // This needs to be set to tell Sublime that our build should occur using
+    // this command instead of the default exec command. We also require the
+    // cancel key to ensure that remote builds can be cancelled using the
+    // standard commands.
+    "target": "remote_exec",
+    "cancel": {"kill": true},
+
+    // As in Sublime, these are used to control what appears in the output panel
+    // and how it appears.
+    "encoding": "something",
+    "quiet": true,
+    "word_wrap": false,
+    "syntax": "Packages/Text/Plain text.tmLanguage",
+
+    // This is passed to the server; any environment that's set here thus takes
+    // effect on the remote end while the task is running.
+    "env": {},
+
+    // These work like the local counterparts of the same name, except that they
+    // are applied to the arguments used for the build based on the platform
+    // that the server is running on instead of the client.
+    "server_windows": {},
+    "server_osx": {},
+    "server_linux": {},
+
+    // These specify what command should be executed on the remote server when
+    // the build happens.
+    //
+    // These have variables expanded by Sublime, and as such if we want our own
+    // variables, we need to use other options.
+    "cmd": [],
+    "shell_cmd": "$file",
+
+    // If these appear, they supersede the versions above and will thus be used
+    // instead. We are responsible for expanding variables, so it might be
+    // easier for the user to use these if they use custom variables.
+    "remote_cmd": [],
+    "remote_shell_cmd": "$file",
+
+    "working_dir": "",
+
+    // These kick special action off in the remote end. In particular, these
+    // need to be recognized by the server so that it can rewrite messages as
+    // it's transmitting them back.
+    "file_regex": "",
+    "line_regex": "",
+    "result_regex_threshold": 4,
+
+    // The name of the host to build with, or null to prompt.
+    "remote_host": null,
+
+    // Specifies the folders that are part of the build. This thus indicates
+    // exactly what files need to be sent to the remote system to perform the
+    // build.
+    //
+    // This can be a list of one or more paths in the format laid out below.
+    //
+    // This can be:
+    //   1) Explicitly set in the build file; it's used as seen in the build
+    //   2) Not in the build, but used with a project; use the folders from the
+    //      project
+    //   3) Not in the build, not with a project, but folders are open; use
+    //      those open folders, assume that everything is included
+    //   4) Not in the build, not with a project, no folders open; just send
+    //      the current file.
+    "folders": [
+        {
+            // Absolutely required; it specifies where the path we're talking
+            // about exists.
+            "path": ".",
+
+            // If this is included, then only files in the path above that match
+            // patterns in this list are included in the build; any files that
+            // don't match the include pattern don't contribute to the build.
+            "folder_include_patterns": [],
+            "file_include_patterns": [],
+
+            // If this is included, then any files that would otherwise be
+            // included in the build will NOT be included in the build if they
+            // match entries in this list. This means that if used with the
+            // include patterns, that the include applies and THEN the exclude
+            // takes away.
+            "folder_exclude_patterns": [],
+            "file_exclude_patterns": [],
+        }
+    ]
+}
