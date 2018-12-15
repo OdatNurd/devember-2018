@@ -5,19 +5,19 @@ from pprint import pprint
 import fnmatch
 import os
 
-# From a project
-spec = {
+# From a build system
+spec1 = [{
     "path": ".",
 
     "folder_include_patterns": [],
     "file_include_patterns": [],
 
-    "folder_exclude_patterns": [], # Include the global in this
-    "file_exclude_patterns": [],   # Include the global in this
-}
+    "folder_exclude_patterns": [],
+    "file_exclude_patterns": [],
+}]
 
-# From a project
-spec2 = {
+# From a build system
+spec2 = [{
     "folder_exclude_patterns":
     [
         "obj",
@@ -25,12 +25,12 @@ spec2 = {
         "__pycache__"
     ],
     "path": "."
-}
+}]
 
-spec3 = {
+spec3 = [{
+}]
 
-}
-
+spec4 = []
 
 # TODO: this requires some case sensitive path checks
 def _keep(filename, includes, excludes):
