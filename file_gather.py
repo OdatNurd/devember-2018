@@ -2,6 +2,7 @@ import sublime
 import sublime_plugin
 
 from pprint import pprint
+import fnmatch
 import os
 
 # From a project
@@ -30,8 +31,49 @@ spec3 = {
 
 }
 
-def _keep(subpath, file_inc, file_exc, path_inc, path_exc):
-    return True
+
+# TODO: this requires some case sensitive path checks
+def _keep(filename, includes, excludes):
+    """
+    Given a file name, return a boolean to indicate if this file should be
+    considered part of the build based on the given list of include and exclude
+    patterns.
+
+    The filters are applied in the order: "include, exclude" such that if there
+    are no includes, we assume that everything is included by default.
+    """
+    def list_match(filename, patterns, default_if_empty):
+        if not patterns:
+            return default_if_empty
+
+        for pattern in patterns:
+            if fnmatch.fnmatch(filename, pattern):
+                return True
+
+        return False
+
+    return (list_match(filename, includes, True) and
+                not list_match(filename, excludes, False))
+
+
+# TODO: this requires some case sensitive path checks
+def _prune_folders(folders, includes, excludes):
+    """
+    Given a list of folders, return a copy of it that includes just the folders
+    that should be considered part of the build based on the given list of
+    include and exclude patterns.
+
+    The filters are applied in the order: "include, exclude" such that if there
+    are no includes, we assume that everything is included by default.
+    """
+    result = []
+    for folder in folders:
+        if not includes or folder in includes:
+            if folder not in excludes:
+                result.append(folder)
+
+    return result
+
 
 def _files_for_folder(window, folder, project_path):
     """
@@ -59,11 +101,13 @@ def _files_for_folder(window, folder, project_path):
     # print("path exclude: %s" % path_excludes)
 
     results = []
-    for (path, dirs, files) in os.walk(search_path, followlinks=False):
+    for (path, dirs, files) in os.walk(search_path):
+        dirs[:] = _prune_folders(dirs, path_includes, path_excludes)
+
         rPath = os.path.relpath(path, search_path) if path != search_path else ""
         for name in files:
             name = os.path.join(rPath, name)
-            if _keep(name, file_includes, file_excludes, path_includes, path_excludes):
+            if _keep(name, file_includes, file_excludes):
                 results.append(name)
 
     return results
@@ -94,7 +138,6 @@ def _find_project_files(window):
     return files
 
 
-
 # Any window with folders open always:
 #   1) responds to window.folders() with a list of folders (absolute)
 #   2) responds to window.project_data() with at least the "folders" key
@@ -105,4 +148,11 @@ class FileGatherCommand(sublime_plugin.WindowCommand):
     def run(self):
         files = _find_project_files(self.window)
         pprint(files)
+
+        # dirs = ['.git', 'remote_build_server', 'net_test', 'enum']
+        # dirs[:] = _prune_folders(dirs, [], [".git", ".svn"])
+        # pprint(dirs)
+
+        # filename = "sample.txt"
+        # print(filename, _keep(filename, ["*.txt"], []))
 
