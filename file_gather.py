@@ -119,16 +119,18 @@ def _files_for_folder(window, folder, project_path):
     return results
 
 
-def _find_project_files(window):
+def _find_project_files(window, folders=None):
     """
     Given a list of folder entries and a potential project path, return a list
     of all files that exist at that particular path.
     """
-    data = window.project_data()
-    folders = data.get("folders", None) if data else None
-    path = window.project_file_name()
-    if path:
-        path = os.path.split(path)[0]
+    path = None
+    if folders is None:
+        data = window.project_data()
+        folders = data.get("folders", None) if data else None
+        path = window.project_file_name()
+        if path:
+            path = os.path.split(path)[0]
 
     files = []
     if not folders:
@@ -152,7 +154,7 @@ def _find_project_files(window):
 #   1) window.project_file_name()
 class FileGatherCommand(sublime_plugin.WindowCommand):
     def run(self):
-        files = _find_project_files(self.window)
+        files = _find_project_files(self.window, folders=spec1)
         pprint(files)
 
         # dirs = ['.git', 'remote_build_server', 'net_test', 'enum']
