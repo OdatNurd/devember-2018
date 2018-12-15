@@ -7,7 +7,7 @@ import os
 
 # From a build system
 spec1 = [{
-    "path": ".",
+    "path": "/home/tmartin/local/src/devember-2018/",
 
     "folder_include_patterns": [],
     "file_include_patterns": [],
@@ -24,7 +24,7 @@ spec2 = [{
         "bin",
         "__pycache__"
     ],
-    "path": "."
+    "path": "/home/tmartin/local/src/devember-2018/"
 }]
 
 spec3 = [{
@@ -90,7 +90,13 @@ def _files_for_folder(window, folder, project_path):
     file_excludes.extend(settings.get("file_exclude_patterns", []))
     path_excludes.extend(settings.get("folder_exclude_patterns", []))
 
+    if search_path is None:
+        raise ValueError("folder entry does not contain a path")
+
     if not os.path.isabs(search_path):
+        if project_path is None:
+            raise ValueError("paths in non-project folder entries cannot be relative")
+
         search_path = os.path.abspath(os.path.relpath(project_path, search_path))
 
     print("---------------------------------------")
