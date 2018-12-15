@@ -154,7 +154,17 @@ def _find_project_files(window, folders=None):
 #   1) window.project_file_name()
 class FileGatherCommand(sublime_plugin.WindowCommand):
     def run(self):
-        files = _find_project_files(self.window, folders=spec1)
+        files = _find_project_files(self.window, folders=[
+                {
+                    "path": "/home/tmartin/local/src/devember-2018/",
+                    "folder_exclude_patterns":
+                    [
+                        "obj",
+                        "bin",
+                        "__pycache__"
+                    ],
+                }
+            ])
         pprint(files)
 
         # dirs = ['.git', 'remote_build_server', 'net_test', 'enum']
