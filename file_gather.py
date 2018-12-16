@@ -78,7 +78,7 @@ def _prune_folders(folders, includes, excludes):
     return result
 
 
-def _get_file_details(root_path, filename):
+def _get_file_details(root_path, filename, hash_file):
     """
     Get all of the underlying file details for the provided file in the given
     root path.
@@ -87,26 +87,31 @@ def _get_file_details(root_path, filename):
 
     try:
         mtime = os.path.getmtime(name)
-        sha1 = hashlib.sha1()
+        sha1 = None
 
-        with open(name, "rb") as file:
-            while True:
-                data = file.read(262144)
-                if not data:
-                    break
-                sha1.update(data)
+        if hash_file:
+            sha1 = hashlib.sha1()
+
+            with open(name, "rb") as file:
+                while True:
+                    data = file.read(262144)
+                    if not data:
+                        break
+                    sha1.update(data)
+
+            sha1 = sha1.hexdigest()
 
         return {
             "name": filename,
             "last_modified": mtime,
-            "sha1": sha1.hexdigest()
+            "sha1": sha1
         }
 
     except OSError:
         return None
 
 
-def _files_for_folder(window, folder, project_path):
+def _files_for_folder(window, folder, project_path, hash_files):
     """
     Given a particular folder dict in a window with the provided project path,
     return a list of all files in that folder that should apply to the build.
@@ -145,12 +150,12 @@ def _files_for_folder(window, folder, project_path):
         for name in files:
             name = os.path.join(rPath, name)
             if _keep(name, file_includes, file_excludes):
-                results[name] = _get_file_details(search_path, name)
+                results[name] = _get_file_details(search_path, name, hash_files)
 
     return search_path, results
 
 
-def _find_project_files(window, folders=None):
+def _find_project_files(window, folders=None, hash_files=True):
     """
     Given a list of folder entries and a potential project path, return a list
     of all files that exist at that particular path.
@@ -168,12 +173,12 @@ def _find_project_files(window, folders=None):
         view = window.active_view()
         if view and view.file_name() is not None:
             base_folder, filename = os.path.split(view.file_name())
-            files[base_folder] = _get_file_details(base_folder, filename)
+            files[base_folder] = _get_file_details(base_folder, filename, hash_files)
 
         return files
 
     for folder in folders:
-        base_folder, folder_files = _files_for_folder(window, folder, path)
+        base_folder, folder_files = _files_for_folder(window, folder, path, hash_files)
         files[base_folder] = folder_files
 
     return files
