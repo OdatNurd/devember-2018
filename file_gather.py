@@ -2,6 +2,8 @@ import sublime
 import sublime_plugin
 
 from pprint import pprint
+import json
+
 import fnmatch
 import os
 
@@ -154,18 +156,22 @@ def _find_project_files(window, folders=None):
 #   1) window.project_file_name()
 class FileGatherCommand(sublime_plugin.WindowCommand):
     def run(self):
-        files = _find_project_files(self.window, folders=[
-                {
-                    "path": "/home/tmartin/local/src/devember-2018/",
-                    "folder_exclude_patterns":
-                    [
-                        "obj",
-                        "bin",
-                        "__pycache__"
-                    ],
-                }
-            ])
-        pprint(files)
+        files = _find_project_files(self.window, None)#folders=[
+            #     {
+            #         "path": "/home/tmartin/local/src/devember-2018/",
+            #         "folder_exclude_patterns":
+            #         [
+            #             "obj",
+            #             "bin",
+            #             "__pycache__"
+            #         ],
+            #     },
+            #     {
+            #         "path": "/home/tmartin/local/src/devember-2017/",
+            #     }
+            # ])
+        # pprint(files)
+        print(json.dumps(files, indent=2, sort_keys=True))
 
         # dirs = ['.git', 'remote_build_server', 'net_test', 'enum']
         # dirs[:] = _prune_folders(dirs, [], [".git", ".svn"])
