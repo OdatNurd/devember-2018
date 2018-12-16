@@ -192,7 +192,7 @@ def _find_project_files(window, folders=None, hash_files=True):
 #   1) window.project_file_name()
 class FileGatherCommand(sublime_plugin.WindowCommand):
     def run(self):
-        files = _find_project_files(self.window, folders=[])
+        files = _find_project_files(self.window, folders=None)
             #     {
             #         "path": "/home/tmartin/local/src/devember-2018/",
             #         "folder_exclude_patterns":
