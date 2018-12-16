@@ -4,6 +4,7 @@ import sublime_plugin
 from pprint import pprint
 import json
 
+import hashlib
 import fnmatch
 import os
 
@@ -75,6 +76,34 @@ def _prune_folders(folders, includes, excludes):
                 result.append(folder)
 
     return result
+
+
+def _get_file_details(root_path, filename):
+    """
+    Get all of the underlying file details for the provided file in the given
+    root path.
+    """
+    name = os.path.join(root_path, filename)
+
+    try:
+        mtime = os.path.getmtime(name)
+        sha1 = hashlib.sha1()
+
+        with open(name, "rb") as file:
+            while True:
+                data = file.read(262144)
+                if not data:
+                    break
+                sha1.update(data)
+
+        return {
+            "name": filename,
+            "last_modified": mtime,
+            "sha1": sha1.hexdigest()
+        }
+
+    except OSError:
+        return None
 
 
 def _files_for_folder(window, folder, project_path):
