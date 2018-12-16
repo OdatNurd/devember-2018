@@ -97,9 +97,9 @@ def _files_for_folder(window, folder, project_path):
         if project_path is None:
             raise ValueError("paths in non-project folder entries cannot be relative")
 
-        search_path = os.path.abspath(os.path.relpath(project_path, search_path))
+        search_path = os.path.abspath(os.path.join(project_path, search_path))
 
-    print("---------------------------------------")
+    # print("---------------------------------------")
     # print("folder:       '%s'" % search_path)
     # print("file include: %s" % file_includes)
     # print("file exclude: %s" % file_excludes)
