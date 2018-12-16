@@ -137,7 +137,7 @@ def _files_for_folder(window, folder, project_path):
     # print("path include: %s" % path_includes)
     # print("path exclude: %s" % path_excludes)
 
-    results = []
+    results = {}
     for (path, dirs, files) in os.walk(search_path):
         dirs[:] = _prune_folders(dirs, path_includes, path_excludes)
 
@@ -145,9 +145,9 @@ def _files_for_folder(window, folder, project_path):
         for name in files:
             name = os.path.join(rPath, name)
             if _keep(name, file_includes, file_excludes):
-                results.append(name)
+                results[name] = _get_file_details(search_path, name)
 
-    return results
+    return search_path, results
 
 
 def _find_project_files(window, folders=None):
@@ -163,7 +163,7 @@ def _find_project_files(window, folders=None):
         if path:
             path = os.path.split(path)[0]
 
-    files = []
+    files = {}
     if not folders:
         view = window.active_view()
         if view and view.file_name() is not None:
@@ -172,7 +172,8 @@ def _find_project_files(window, folders=None):
         return files
 
     for folder in folders:
-        files.extend(_files_for_folder(window, folder, path))
+        base_folder, folder_files = _files_for_folder(window, folder, path)
+        files[base_folder] = folder_files
 
     return files
 
