@@ -223,7 +223,7 @@ def _find_project_files(window, folders=None, hash_files=True):
         base_folder, folder_files = _files_for_folder(window, folder, path, hash_files)
         files[base_folder] = folder_files
 
-    return files
+    return _coalesce_folders(files)
 
 
 # Any window with folders open always:
