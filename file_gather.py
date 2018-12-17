@@ -11,21 +11,24 @@ from os.path import dirname, basename
 
 
 test_folder = {
+  # This file does not appear locally
   "/home/tmartin/local/src/devember-2018/remote_build_server": {
-    "BuildClient.cs": {
+    "BuildClient1.cs": {
       "last_modified": 1544504473.2212374,
       "name": "BuildClient.cs",
       "sha1": "201b43d4ddb4dc395c09b10e83305227b643db50"
     },
+    # The hash on this is different on purpose
     "Extensions.cs": {
       "last_modified": 1544416126.3528106,
       "name": "Extensions.cs",
-      "sha1": "3e137214ffd6dfdd52b8ff3bb46e9fdab96fab7c"
+      "sha1": "3a137214ffd6dfdd52b8ff3bb46a9fdab96fab7c"
     },
+    # The hash on this is different on purpose
     "Main.cs": {
       "last_modified": 1544502070.7733796,
       "name": "Main.cs",
-      "sha1": "e596ccd55c6b253f14f09a7b68826e22fbb59f8e"
+      "sha1": "e596ffd55f6b253f14f09a7b68826e22fbb59f8e"
     },
     "messages/Error.cs": {
       "last_modified": 1544506203.8349078,
@@ -256,7 +259,62 @@ def calculate_fileset_deltas(us, them):
     what files need to be added, removed or updated in order to make their
     files match ours.
     """
-    return {}
+    file_deltas = {}
+
+    # For all folders that we have, add entries to tell the other end how to
+    # create or update their copies of these folders.
+    for our_folder, our_files in us.items():
+        file_deltas[our_folder] = {
+            "add": {},
+            "remove": {},
+            "modify": {}
+        }
+        diffed = file_deltas[our_folder]
+
+        # Get the set of files for them in this folder; if it doesn't exist,
+        # then we need to add all of the files for this folder directly and
+        # that's all we have to worry about.
+        their_files = them.get(our_folder, None)
+        if their_files is None:
+            diffed["add"].update(us[our_folder])
+            continue
+
+        # print(our_files)
+        # print(their_files)
+        our_set = set(our_files.keys())
+        their_set = set(their_files.keys())
+
+        # print(our_set)
+        # print(their_set)
+        # print(our_set - their_set) # files we have they don't
+        # print(their_set - our_set) # files they have we don't
+        # print(our_set & their_set) # files we both have
+
+        # Add files we have and they don't
+        for file in our_set - their_set:
+            diffed["add"][file] = our_files[file]
+
+        # Remove files they have and we don't
+        for file in their_set - our_set:
+            diffed["remove"][file] = their_files[file]
+
+        # Update any files we both have that have changed
+        for file in our_set & their_set:
+            if our_files[file]["sha1"] != their_files[file]["sha1"]:
+                diffed["modify"][file] = our_files[file]
+
+
+    # For all folders that the remote end has, if we don't have them, tell the
+    # remote end to remove them now
+    for their_folder, their_files in them.items():
+        if their_folder not in us:
+            file_deltas[their_folder] = {
+                "add": {},
+                "remove": their_files,
+                "modify": {}
+            }
+
+    return file_deltas
 
 # Any window with folders open always:
 #   1) responds to window.folders() with a list of folders (absolute)
