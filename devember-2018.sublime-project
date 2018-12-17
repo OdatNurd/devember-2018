@@ -25,11 +25,19 @@
         {
             "folder_exclude_patterns":
             [
+                "__pycache__",
+                "remote_build_server"
+            ],
+            "path": ".",
+            "name": "devember_2018"
+        },
+        {
+            "path": "./remote_build_server",
+            "folder_exclude_patterns":
+            [
                 "obj",
                 "bin",
-                "__pycache__"
-            ],
-            "path": "."
+            ]
         }
     ]
 }
