@@ -7,6 +7,8 @@ import json
 import hashlib
 import fnmatch
 import os
+from os.path import dirname, basename
+
 
 # From a build system
 spec1 = [{
@@ -76,6 +78,46 @@ def _prune_folders(folders, includes, excludes):
                 result.append(folder)
 
     return result
+
+
+def _coalesce_folders(folder_dict):
+    """
+    Given a dictionary of top level build folders that has had its contents
+    filled out, attempt to coalesce all of the child folders that appear into
+    their parents.
+    """
+    get_folders = lambda d: sorted(d.keys(), key=lambda fn: (dirname(fn), basename(fn)))
+
+    coalesced = {}
+    for folder in get_folders(folder_dict):
+        # Scan over all of the folders currently in the new output to see if
+        # any of them are wholly used as our path prefix.
+        common = None
+        for fixed_folder in get_folders(coalesced):
+            if folder.startswith(fixed_folder):
+                common = fixed_folder
+                break
+
+        if common is None:
+            coalesced[folder] = folder_dict[folder]
+
+        else:
+            suffix = folder[len(common):].lstrip(os.sep)
+            # print("Coalescing '{0}' into {1}".format(suffix, common))
+
+            # Alias the the dictionary we're going to copy items from and the
+            # dictionary we're going to copy them to.
+            src = folder_dict[folder]
+            dst = coalesced[common]
+
+            for name,info in src.items():
+                new_entry = os.path.join(suffix, name)
+                dst[new_entry] = info
+                dst[new_entry]["name"] = new_entry
+
+        # print(folder)
+
+    return coalesced
 
 
 def _get_file_details(root_path, filename, hash_file):
