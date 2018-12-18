@@ -1,5 +1,8 @@
+import sublime
+
 import inspect
 import struct
+import socket
 
 
 class ProtocolMessage():
@@ -81,8 +84,15 @@ class IntroductionMessage(ProtocolMessage):
     """
     protocol_version = 1
 
+    def __init__(self, user, password, hostname=None, platform=None):
+        self.user = user
+        self.password = password
+        self.hostname = hostname or socket.getfqdn()
+        self.platform = platform or sublime.platform()
+
     def __str__(self):
-        return "<Introduction version={0}>".format(self.protocol_version)
+        return "<Introduction user={0} host={1} platform={2} version={3}>".format(
+            self.user, self.hostname, self.platform, self.protocol_version)
 
     @classmethod
     def msg_id(cls):
@@ -90,16 +100,26 @@ class IntroductionMessage(ProtocolMessage):
 
     @classmethod
     def decode(cls, data):
-        msg = IntroductionMessage()
-        _, msg.protocol_version  = struct.unpack(">HB", data)
+        _, version, user, password, hostname, platform = struct.unpack(">HB64s64s64s8s", data)
+
+        msg = IntroductionMessage(
+            user.decode("utf-8").rstrip("\000"),
+            password.decode("utf-8").rstrip("\000"),
+            hostname.decode("utf-8").rstrip("\000"),
+            platform.decode("utf-8").rstrip("\000"))
+        msg.protocol_version = version
 
         return msg
 
     def encode(self):
-        return struct.pack(">IHB",
-            3,
+        return struct.pack(">IHB64s64s64s8s",
+            2 + 1 + 64 + 64 + 64 + 8,
             IntroductionMessage.msg_id(),
-            self.protocol_version)
+            self.protocol_version,
+            self.user.encode("utf-8"),
+            self.password.encode("utf-8"),
+            self.hostname.encode("utf-8"),
+            self.platform.encode("utf-8"))
 
 ProtocolMessage.register(IntroductionMessage)
 
