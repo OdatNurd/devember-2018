@@ -60,6 +60,7 @@ class SocketTestCommand(sublime_plugin.WindowCommand):
         if self.connection is None or self.connection.socket is None:
             self.connection = netManager.connect("dart", 50000)
             self.connection.register(lambda c,n: self.result(c,n))
+            self.connection.send(IntroductionMessage("tmartin", "myPasswordGoesHere"))
 
         self.connection.send(MessageMessage(msg))
 
@@ -75,7 +76,7 @@ class SocketTestCommand(sublime_plugin.WindowCommand):
             if msg is None:
                 log(" -> Error: Notification says message, queue says no")
             else:
-                log("Received: '{0}'", msg.msg, panel=True)
+                log("Received: '{0}'", msg, panel=True)
 
 
 ### ---------------------------------------------------------------------------
