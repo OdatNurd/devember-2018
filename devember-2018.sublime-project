@@ -18,6 +18,24 @@
             "word_wrap": false,
             "quiet": true,
             "working_dir": "${project_path}/remote_build_server/"
+        },
+        {
+            "name": "dotnet_tests",
+            "shell_cmd": "dotnet build",
+            "variants":
+            [
+                {
+                    "name": "Clean",
+                    "shell_cmd": "dotnet clean"
+                },
+                {
+                    "name": "Run",
+                    "shell_cmd": "dotnet run"
+                }
+            ],
+            "word_wrap": false,
+            "quiet": true,
+            "working_dir": "${project_path}/dotnet_tests/"
         }
     ],
     "folders":
@@ -26,13 +44,22 @@
             "folder_exclude_patterns":
             [
                 "__pycache__",
-                "remote_build_server"
+                "remote_build_server",
+                "dotnet_tests"
             ],
             "path": ".",
             "name": "devember_2018"
         },
         {
             "path": "./remote_build_server",
+            "folder_exclude_patterns":
+            [
+                "obj",
+                "bin",
+            ]
+        },
+        {
+            "path": "./dotnet_tests",
             "folder_exclude_patterns":
             [
                 "obj",
