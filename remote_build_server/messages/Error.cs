@@ -14,6 +14,7 @@ public class ErrorMessage : IProtocolMessage
     }
 
     public MessageType MsgID { get ; private set; } = MessageType.Error;
+    public bool CloseAfterSending { get ; set; } = false;
 
     public ErrorMessage(byte[] data)
     {

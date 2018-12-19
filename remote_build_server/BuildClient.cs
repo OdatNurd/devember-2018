@@ -20,6 +20,7 @@ public partial class BuildClient
     // used to indicate how many bytes were actually transmitted so far.
     public byte[] sendBuffer;
     public int bytesSent;
+    public bool closeAfterSending;
 
     // The queue of messages that should be transmitted to the remote end of the
     // connection.
@@ -91,6 +92,7 @@ public partial class BuildClient
                 return;
 
             sendBuffer = msg.Encode();
+            closeAfterSending = msg.CloseAfterSending;
             bytesSent = 0;
         }
 
@@ -184,6 +186,14 @@ public partial class BuildClient
                 Console.WriteLine("Finished message transmission");
                 client.sendBuffer = null;
                 client.bytesSent = 0;
+
+                if (client.closeAfterSending)
+                {
+                    Console.WriteLine("Closing connection");
+                    socket.Shutdown(SocketShutdown.Both);
+                    socket.Disconnect(true);
+                    return;
+                }
             }
 
             // Trigger another send; if this send was complete, then this will

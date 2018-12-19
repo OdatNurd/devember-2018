@@ -7,6 +7,8 @@ public class MessageMessage : IProtocolMessage
     public string Msg { get ; private set; } = null;
 
     public MessageType MsgID { get ; private set; } = MessageType.Message;
+    public bool CloseAfterSending { get ; set; } = false;
+
 
     public MessageMessage(string msg)
     {

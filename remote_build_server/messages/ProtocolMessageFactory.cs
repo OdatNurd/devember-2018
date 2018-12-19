@@ -16,6 +16,8 @@ public enum MessageType
 public interface IProtocolMessage
 {
     MessageType MsgID { get; }
+    bool CloseAfterSending { get ; set; }
+
     byte[] Encode();
 }
 
