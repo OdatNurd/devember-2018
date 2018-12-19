@@ -36,7 +36,7 @@ public class ProtocolMessageFactory
                 return new IntroductionMessage(data);
 
             case MessageType.Message:
-                return new Message(data);
+                return new MessageMessage(data);
 
             case MessageType.Error:
                 return new ErrorMessage(data);

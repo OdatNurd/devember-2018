@@ -2,16 +2,17 @@
 using System.Text;
 using MiscUtil.Conversion;
 
-public class Message : IProtocolMessage
+public class MessageMessage : IProtocolMessage
 {
     public string Msg { get ; private set; } = null;
 
     public Message(string msg)
+    public MessageMessage(string msg)
     {
         Msg = msg;
     }
 
-    public Message(byte[] data)
+    public MessageMessage(byte[] data)
     {
         if (data.Length < 6)
             throw new ArgumentException("Message data length is invalid");
