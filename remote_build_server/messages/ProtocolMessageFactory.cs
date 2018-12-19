@@ -15,8 +15,10 @@ public enum MessageType
 // An interface that represents a protocol message;
 public interface IProtocolMessage
 {
+    MessageType MsgID { get; }
     byte[] Encode();
 }
+
 
 public class ProtocolMessageFactory
 {

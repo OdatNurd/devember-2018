@@ -15,6 +15,8 @@ public class IntroductionMessage : IProtocolMessage
     public string Hostname { get; private set; }
     public string Platform { get; private set; }
 
+    public MessageType MsgID { get ; private set; } = MessageType.Introduction;
+
     public IntroductionMessage(string user, string password, string hostname, string platform)
     {
         User = user;

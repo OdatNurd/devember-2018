@@ -6,7 +6,8 @@ public class MessageMessage : IProtocolMessage
 {
     public string Msg { get ; private set; } = null;
 
-    public Message(string msg)
+    public MessageType MsgID { get ; private set; } = MessageType.Message;
+
     public MessageMessage(string msg)
     {
         Msg = msg;

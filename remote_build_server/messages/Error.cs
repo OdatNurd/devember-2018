@@ -13,6 +13,8 @@ public class ErrorMessage : IProtocolMessage
         Message = errMsg;
     }
 
+    public MessageType MsgID { get ; private set; } = MessageType.Error;
+
     public ErrorMessage(byte[] data)
     {
 
