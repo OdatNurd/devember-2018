@@ -26,4 +26,11 @@ public static class Extensions
 
         return Encoding.UTF8.GetBytes(input);
     }
+
+    public static string GetFixedWidthString(byte[] bytes, int start, int size)
+    {
+        char[] trim = { '\x00'};
+
+        return Encoding.UTF8.GetString(bytes, start, size).TrimEnd(trim);
+    }
 }

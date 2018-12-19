@@ -33,10 +33,10 @@ public class IntroductionMessage : IProtocolMessage
 
         ProtocolVersion = data[2];
 
-        User = Encoding.UTF8.GetString(data, 3, 64);
-        Password = Encoding.UTF8.GetString(data, 67, 64);
-        Hostname = Encoding.UTF8.GetString(data, 131, 64);
-        Platform = Encoding.UTF8.GetString(data, 195, 8);
+        User = Extensions.GetFixedWidthString(data, 3, 64);
+        Password = Extensions.GetFixedWidthString(data, 67, 64);
+        Hostname = Extensions.GetFixedWidthString(data, 131, 64);
+        Platform = Extensions.GetFixedWidthString(data, 195, 8);
     }
 
     public byte[] Encode()
