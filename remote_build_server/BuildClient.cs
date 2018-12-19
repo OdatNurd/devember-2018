@@ -90,7 +90,7 @@ public class BuildClient
             if (outQueue.TryDequeue(out msg) == false)
                 return;
 
-            sendBuffer = msg.encode();
+            sendBuffer = msg.Encode();
             bytesSent = 0;
         }
 

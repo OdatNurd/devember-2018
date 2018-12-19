@@ -36,7 +36,7 @@ public class IntroductionMessage : IProtocolMessage
         Platform = Encoding.UTF8.GetString(data, 195, 8);
     }
 
-    public byte[] encode()
+    public byte[] Encode()
     {
         byte[] msg = new byte[4 + 2 + 1 + 64 + 64 + 64 + 8];
 

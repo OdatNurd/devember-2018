@@ -24,7 +24,7 @@ public class Message : IProtocolMessage
         Msg = Encoding.UTF8.GetString(data, 6, (int) msgLength);
     }
 
-    public byte[] encode()
+    public byte[] Encode()
     {
         byte[] msgBytes = Encoding.UTF8.GetBytes(Msg);
         UInt32 msgLength = (UInt32) msgBytes.Length;
