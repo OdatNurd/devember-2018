@@ -5,7 +5,7 @@ using System.Text;
 using System.Collections.Concurrent;
 
 // The state object for reading client data.
-public class BuildClient
+public partial class BuildClient
 {
     // The socket that represents the client.
     public Socket socket = null;
@@ -138,8 +138,9 @@ public class BuildClient
             // and get ready for another received message.
             if (inMsg.IsComplete())
             {
-                client.Send(inMsg.getMessage());
+                var msg = inMsg.getMessage();
                 inMsg = new PartialMessage();
+                client.Dispatch(msg);
             }
         }
 
