@@ -58,7 +58,7 @@ class SocketTestCommand(sublime_plugin.WindowCommand):
     def test(self, host, port, msg):
         self.last_msg = msg
         if self.connection is None or self.connection.socket is None:
-            self.connection = netManager.connect("dart", 50000)
+            self.connection = netManager.connect(host, port)
             self.connection.register(lambda c,n: self.result(c,n))
             self.connection.send(IntroductionMessage("tmartin", "myPasswordGoesHere"))
 
