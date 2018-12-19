@@ -109,43 +109,58 @@ public partial class BuildClient
     // for use later.
     public void ReadCallback(IAsyncResult ar)
     {
-        // From the state of the event, get our the state object that wraps all
-        // of the information for this client, and then get the socket out of
-        // it.
-        BuildClient client = (BuildClient) ar.AsyncState;
-        Socket socket = client.socket;
-
-        // Perform the actual receive now; the result is the number of bytes
-        // read, which can conceivably be 0; we only need to worry about doing
-        // something if we actually got some data.
-        int bytesRead = socket.EndReceive(ar);
-        if (bytesRead == 0)
+        try
         {
-            Console.WriteLine("Client closed connection");
-            return;
-        }
 
-        Console.WriteLine("==> Read {0} bytes", bytesRead);
+            // From the state of the event, get our the state object that wraps all
+            // of the information for this client, and then get the socket out of
+            // it.
+            BuildClient client = (BuildClient) ar.AsyncState;
+            Socket socket = client.socket;
 
-        int bytesUsed = 0;
-        while (bytesUsed != bytesRead)
-        {
-            // Give some bytes to the current partial message so it can
-            // reconstruct itself.
-            bytesUsed += inMsg.GiveBytes(client.readBuffer, bytesRead, bytesUsed);
-
-            // If this message is complete, then echo it back to the other end
-            // and get ready for another received message.
-            if (inMsg.IsComplete())
+            // Perform the actual receive now; the result is the number of bytes
+            // read, which can conceivably be 0; we only need to worry about doing
+            // something if we actually got some data.
+            int bytesRead = socket.EndReceive(ar);
+            if (bytesRead == 0)
             {
-                var msg = inMsg.getMessage();
-                inMsg = new PartialMessage();
-                client.Dispatch(msg);
+                Console.WriteLine("Client closed connection");
+                return;
             }
+
+            Console.WriteLine("==> Read {0} bytes", bytesRead);
+
+            int bytesUsed = 0;
+            while (bytesUsed != bytesRead)
+            {
+                // Give some bytes to the current partial message so it can
+                // reconstruct itself.
+                bytesUsed += inMsg.GiveBytes(client.readBuffer, bytesRead, bytesUsed);
+
+                // If this message is complete, then echo it back to the other end
+                // and get ready for another received message.
+                if (inMsg.IsComplete())
+                {
+                    var msg = inMsg.getMessage();
+                    inMsg = new PartialMessage();
+                    client.Dispatch(msg);
+                }
+            }
+
+            // End by getting ready to read more data.
+            client.BeginReading();
         }
 
-        // End by getting ready to read more data.
-        client.BeginReading();
+        catch (SocketException se)
+        {
+            Console.WriteLine("Socket Error: {0}", se.Message);
+            Console.WriteLine("Closing connection");
+        }
+
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+        }
     }
 
     // This handles a send event on a particular client socket that has
