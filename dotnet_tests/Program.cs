@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Newtonsoft.Json;
@@ -93,10 +94,10 @@ namespace dotnet_tests
              ListMatches(file, include_files, true) == true &&
                    ListMatches(file, exclude_files, false) == false;
 
-            if (result)
-                Console.WriteLine("Including File: {0}", file);
-            else
-                Console.WriteLine("Excluding File: {0}", file);
+            // if (result)
+            //     Console.WriteLine("Including File: {0}", file);
+            // else
+            //     Console.WriteLine("Excluding File: {0}", file);
             return result;
         }
 
@@ -138,18 +139,58 @@ namespace dotnet_tests
             return file_delta;
         }
 
+        static void PathSearch(string rootPath, Exclusions exclusions, string dir=null)
+        {
+            rootPath = Path.GetFullPath(rootPath);
+            if (rootPath.EndsWith(Path.DirectorySeparatorChar.ToString()) == false)
+                rootPath += Path.DirectorySeparatorChar;
+
+            if (dir == null)
+                dir = rootPath;
+
+            if (dir.EndsWith(Path.DirectorySeparatorChar.ToString()) == false)
+                dir += Path.DirectorySeparatorChar;
+
+            foreach (var thisDir in Directory.GetDirectories(dir))
+            {
+                var subDir = thisDir.Substring(dir.Length);
+                // Console.WriteLine("rootDir = {0}", rootPath);
+                // Console.WriteLine("thisDir = {0}", thisDir);
+                // Console.WriteLine("xxxDir = {0}", dir);
+                // Console.WriteLine("==> {0}", subDir);
+                if (exclusions.UseDir(subDir))
+                    PathSearch(rootPath, exclusions, thisDir);
+            }
+
+            foreach (var thisFile in Directory.GetFiles(dir))
+            {
+                if (exclusions.UseFile(thisFile.Substring(dir.Length)))
+                    Console.WriteLine("-> {0}", thisFile.Substring(rootPath.Length));
+                // Console.WriteLine("{0} ({1})",
+                //     thisFile.Substring(rootPath.Length),
+                //     thisFile.Substring(dir.Length));
+            }
+        }
+
         static void Main(string[] args)
         {
-            var json = JsonConvert.SerializeObject(MakeDeltaTest(), Formatting.Indented);
-            Console.WriteLine("JSON: {0}", json);
+            Exclusions exclusions = new Exclusions();
 
-            var delta = JsonConvert.DeserializeObject<FileDelta>(json);
-            Console.WriteLine("Delta: {0}", delta);
+            exclusions.AddFolderExclude("bin");
+            exclusions.AddFolderExclude("obj");
+            // exclusions.AddFileInclude("*.cs");
 
-            if (json == JsonConvert.SerializeObject(delta, Formatting.Indented))
-                Console.WriteLine("PASS");
-            else
-                Console.WriteLine("FAIL");
+            PathSearch("C:/Users/micro/AppData/Roaming/Sublime Text 3/Packages/devember_2018/remote_build_server", exclusions);
+            // var json = JsonConvert.SerializeObject(MakeDeltaTest(), Formatting.Indented);
+            // Console.WriteLine("JSON: {0}", json);
+
+            // var delta = JsonConvert.DeserializeObject<FileDelta>(json);
+            // Console.WriteLine("Delta: {0}", delta);
+
+            // if (json == JsonConvert.SerializeObject(delta, Formatting.Indented))
+            //     Console.WriteLine("PASS");
+            // else
+            //     Console.WriteLine("FAIL");
         }
     }
 }
