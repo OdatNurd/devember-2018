@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.RegularExpressions;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
@@ -40,6 +41,85 @@ namespace dotnet_tests
             this[path] =delta;
 
             return delta;
+        }
+    }
+
+    class Exclusions
+    {
+        List<string> include_folders { get; set; } = new List<string>();
+        List<string> exclude_folders { get; set; } = new List<string>();
+
+        List<Regex> include_files { get; set; } = new List<Regex>();
+        List<Regex> exclude_files { get; set; } = new List<Regex>();
+
+        public void AddFolderInclude(string dir)
+        {
+            include_folders.Add(dir);
+        }
+
+        public void AddFolderExclude(string dir)
+        {
+            exclude_folders.Add(dir);
+        }
+
+        public void AddFileInclude(string file)
+        {
+            include_files.Add(MakeRegex(file));
+        }
+
+        public void AddFileExclude(string file)
+        {
+            exclude_files.Add(MakeRegex(file));
+        }
+
+        public bool UseDir(string dir)
+        {
+            if (include_folders.Count == 0 || include_folders.Contains(dir))
+            {
+                if (exclude_folders.Contains(dir) == false)
+                {
+                    Console.WriteLine("Including Dir: {0}", dir);
+                    return true;
+                }
+            }
+
+            Console.WriteLine("Excluding Dir: {0}", dir);
+            return false;
+        }
+
+        public bool UseFile(string file)
+        {
+            var result =
+             ListMatches(file, include_files, true) == true &&
+                   ListMatches(file, exclude_files, false) == false;
+
+            if (result)
+                Console.WriteLine("Including File: {0}", file);
+            else
+                Console.WriteLine("Excluding File: {0}", file);
+            return result;
+        }
+
+        bool ListMatches(string file, List<Regex> patterns, bool default_if_empty)
+        {
+            if (patterns.Count == 0)
+                return default_if_empty;
+
+            foreach (var pattern in patterns)
+            {
+                if (pattern.IsMatch(file))
+                    return true;
+            }
+
+            return false;
+        }
+
+        Regex MakeRegex(string glob)
+        {
+            var regex = Regex.Escape(glob).Replace(@"\*", ".*").Replace(@"\?", ".");
+
+            return new Regex(String.Format("^{0}$", regex));
+
         }
     }
 
