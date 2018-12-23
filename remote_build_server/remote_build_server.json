@@ -1,0 +1,14 @@
+{
+    "base_cache": "D:/remote_build_cache/",
+
+    "users": [
+        {
+            "username": "tmartin",
+            "password": "password",
+        },
+        {
+            "username": "marisue",
+            "password": "password",
+        }
+    ]
+}
