@@ -9,13 +9,13 @@ public class RemoteBuildServer
 {
     // The thread signal object; this is used to allow the various threads of
     // execution to syncronize.
-    public static ManualResetEvent allDone = new ManualResetEvent(false);
+    public ManualResetEvent allDone = new ManualResetEvent(false);
 
     // Contructor: empty
     public RemoteBuildServer() {}
 
     // Start listening for incoming connections on this host.
-    public static void StartListening()
+    public void StartListening()
     {
         // Look up the IP address of our local socket by figuring out what our
         // DNS name is and then resolving it to an IP. For expediency we use the
@@ -85,7 +85,7 @@ public class RemoteBuildServer
     }
 
     // This handles an accepted connection when an asynchronous accept finishes.
-    public static void AcceptCallback(IAsyncResult ar)
+    public void AcceptCallback(IAsyncResult ar)
     {
         // Start by telling the main thread that it's OK for it to continue
         // now.
@@ -107,7 +107,9 @@ public class RemoteBuildServer
     // Our entry point; this just starts us listening.
     public static int Main(String[] args)
     {
-        StartListening();
+        RemoteBuildServer server = new RemoteBuildServer();
+
+        server.StartListening();
 
         return 0;
     }
