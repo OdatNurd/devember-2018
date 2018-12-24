@@ -23,7 +23,22 @@ public class RemoteBuildServer
         // may possibly be nondeterministic if it happens that the DNS returns
         // an IPv6 here and an IPv4 later for the client or something).
         IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
-        IPAddress ipAddress = ipHostInfo.AddressList[0];
+        IPAddress ipAddress = null;
+
+        foreach (var ip in ipHostInfo.AddressList)
+        {
+            if (ip.AddressFamily == AddressFamily.InterNetwork)
+            {
+                ipAddress = ip;
+                break;
+            }
+        }
+
+        if (ipAddress == null)
+        {
+            Console.WriteLine("No IPv4 address found to listen on");
+            return;
+        }
 
         // Create the address of the endpoint that we're going to listen on.
         IPEndPoint localEndPoint = new IPEndPoint(ipAddress, 50000);
