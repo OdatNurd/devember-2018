@@ -60,7 +60,7 @@ class SocketTestCommand(sublime_plugin.WindowCommand):
         if self.connection is None or self.connection.socket is None:
             self.connection = netManager.connect(host, port)
             self.connection.register(lambda c,n: self.result(c,n))
-            self.connection.send(IntroductionMessage("tmartin", "myPasswordGoesHere"))
+            self.connection.send(IntroductionMessage("tmartin", "password"))
 
         self.connection.send(MessageMessage(msg))
 

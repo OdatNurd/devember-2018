@@ -37,8 +37,16 @@ public partial class BuildClient
             return;
         }
 
+        // No matter what, we've been introduced now.
         hasIntroduced = true;
-        SendMessage(String.Format("Hello, {0}", message.User));
+
+        // Use the information from the introduction message to log in the user
+        user = config.LoginUser(message.User, message.Password);
+
+        if (user == null)
+            SendError(1, "Invalid username/password");
+        else
+            SendMessage(String.Format("Hello, {0}", message.User));
     }
 
     void HandleMessage(MessageMessage message)
