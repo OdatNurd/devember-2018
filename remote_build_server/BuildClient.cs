@@ -10,6 +10,13 @@ public partial class BuildClient
     // The socket that represents the client.
     public Socket socket = null;
 
+    // The global configuration object.
+    public RemoteBuildConfig config = null;
+
+    // When this client is identified to be a particular user, that user
+    // is stored here. Otherwise the value is null.
+    public RemoteBuildConfig.RemoteBuildUser user = null;
+
     // The receive buffer for this client; we track both an array as well as
     // the size of that array.
     public const int ReadBufferSize = 1024;
@@ -33,9 +40,10 @@ public partial class BuildClient
     /// Create a new client object that's set up to talk over the provided
     /// socket connection.
     /// </summary>
-    public BuildClient(Socket clientSocket)
+    public BuildClient(Socket clientSocket, RemoteBuildConfig globalConfig)
     {
         socket = clientSocket;
+        config = globalConfig;
     }
 
     /// <summary>

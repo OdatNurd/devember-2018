@@ -107,7 +107,7 @@ public class RemoteBuildServer
 
         // Create a new client object to wrap this new client socket, and tell
         // it to start reading now.
-        new BuildClient(handler).BeginReading();
+        new BuildClient(handler, config).BeginReading();
     }
 
     // Our entry point; this just starts us listening.
