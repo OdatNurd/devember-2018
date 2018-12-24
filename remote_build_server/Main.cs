@@ -4,14 +4,15 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-public class AsynchronousSocketListener
+
+public class RemoteBuildServer
 {
     // The thread signal object; this is used to allow the various threads of
     // execution to syncronize.
     public static ManualResetEvent allDone = new ManualResetEvent(false);
 
     // Contructor: empty
-    public AsynchronousSocketListener() {}
+    public RemoteBuildServer() {}
 
     // Start listening for incoming connections on this host.
     public static void StartListening()
