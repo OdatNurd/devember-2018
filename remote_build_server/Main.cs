@@ -11,8 +11,14 @@ public class RemoteBuildServer
     // execution to syncronize.
     public ManualResetEvent allDone = new ManualResetEvent(false);
 
+    // The system configuration.
+    RemoteBuildConfig config;
+
     // Contructor: empty
-    public RemoteBuildServer() {}
+    public RemoteBuildServer()
+    {
+        config = RemoteBuildConfig.Load("./remote_build_server.json");
+    }
 
     // Start listening for incoming connections on this host.
     public void StartListening()
