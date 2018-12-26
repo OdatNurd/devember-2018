@@ -25,10 +25,19 @@ netManager = None
 
 
 def plugin_loaded():
+    """
+    Initialize plugin state.
+    """
     global netManager
 
     netManager = ConnectionManager()
     netManager.startup()
+
+    rb_setting.obj = sublime.load_settings("RemoteBuild.sublime-settings")
+    rb_setting.default = {
+        "build_hosts": []
+    }
+
 
 
 def plugin_unloaded():
@@ -42,7 +51,18 @@ def plugin_unloaded():
 ### ---------------------------------------------------------------------------
 
 
-class SocketTestCommand(sublime_plugin.WindowCommand):
+def rb_setting(key):
+    """
+    Get a RemoteBuild setting from a cached settings object.
+    """
+    default = rb_setting.default.get(key, None)
+    return rb_setting.obj.get(key, default)
+
+
+### ---------------------------------------------------------------------------
+
+
+class RemoteBuildCommand(sublime_plugin.WindowCommand):
     last_msg = "Hello, World!"
 
     def __init__(self, window):
