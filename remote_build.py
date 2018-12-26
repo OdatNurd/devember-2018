@@ -62,6 +62,37 @@ def rb_setting(key):
 ### ---------------------------------------------------------------------------
 
 
+class RemoteBuildSelectConnectionCommand(sublime_plugin.WindowCommand):
+    def run(self, **kwargs):
+        hosts = rb_setting("build_hosts")
+
+        items = []
+        for server in hosts:
+            if server.get("password") is None:
+                format_string = "rb://{username}@{host}:{port}"
+            else:
+                format_string = "rb://{username}:********@{host}:{port}"
+
+            items.append([server["name"], format_string.format(**server)])
+
+        self.window.show_quick_panel(
+            items=items,
+            on_select=lambda idx: self.select_item(idx, hosts, kwargs))
+
+    def select_item(self, index, hosts, args):
+        if index >= 0:
+            server = hosts[index]
+            del server["name"]
+            args.update(server)
+
+            if args.get("password") is None:
+                cmd = "remote_build_server_enter_password"
+            else:
+                cmd = "remote_build"
+
+            self.window.run_command(cmd, args)
+
+
 class RemoteBuildServerEnterPasswordCommand(sublime_plugin.WindowCommand):
     def run(self, **kwargs):
         prompt = "{username}@{host} password:".format(
