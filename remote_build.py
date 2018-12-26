@@ -62,6 +62,20 @@ def rb_setting(key):
 ### ---------------------------------------------------------------------------
 
 
+class RemoteBuildServerEnterPasswordCommand(sublime_plugin.WindowCommand):
+    def run(self, **kwargs):
+        prompt = "{username}@{host} password:".format(
+            username=kwargs["username"],
+            host=kwargs["host"])
+
+        self.window.show_input_panel(
+            prompt, "", lambda passwd: self.enter(passwd, kwargs), None, None)
+
+    def enter(self, passwd, args):
+        args["password"] = passwd
+        self.window.run_command("remote_build", args)
+
+
 class RemoteBuildCommand(sublime_plugin.WindowCommand):
     last_msg = "Hello, World!"
 
