@@ -114,19 +114,36 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         super().__init__(window)
         self.connection = None
 
-    def run(self, host, port):
+    def run(self, **kwargs):
+        print("rbc")
+        if self.connection is None or self.connection.connected == False:
+            print("no connection")
+            if all (k in kwargs for k in ("host", "port", "username", "password")):
+                print("have all, mc now")
+                return self.make_connection(kwargs["host"], kwargs["port"],
+                                            kwargs["username"], kwargs["password"])
+            else:
+                print("have none, prompt")
+                return self.window.run_command("remote_build_select_connection", kwargs)
+
+        print("q the c")
+        self.query_message()
+
+    def make_connection(self, host, port, username, password):
+        self.connection = netManager.connect(host, port)
+        self.connection.register(lambda c,n: self.result(c,n))
+        self.connection.send(IntroductionMessage(username, password))
+
+        self.query_message()
+
+    def query_message(self):
         sublime.active_window().show_input_panel(
             "Message:",
             self.last_msg or "",
-            lambda msg: self.test(host, port, msg), None, None)
+            lambda msg: self.send_message(msg), None, None)
 
-    def test(self, host, port, msg):
+    def send_message(self, host, port, msg):
         self.last_msg = msg
-        if self.connection is None or self.connection.socket is None:
-            self.connection = netManager.connect(host, port)
-            self.connection.register(lambda c,n: self.result(c,n))
-            self.connection.send(IntroductionMessage("tmartin", "password"))
-
         self.connection.send(MessageMessage(msg))
 
     def result(self, connection, notification):
@@ -142,6 +159,9 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
                 log(" -> Error: Notification says message, queue says no")
             else:
                 log("Received: '{0}'", msg, panel=True)
+
+        if connection.connected == False:
+            self.connection = None
 
 
 ### ---------------------------------------------------------------------------
