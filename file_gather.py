@@ -223,7 +223,7 @@ def _files_for_folder(window, folder, project_path, hash_files):
     return search_path, results
 
 
-def _find_project_files(window, folders=None, hash_files=True):
+def find_project_files(window, folders=None, hash_files=True):
     """
     Given a list of folder entries and a potential project path, return a list
     of all files that exist at that particular path.
@@ -324,7 +324,7 @@ def calculate_fileset_deltas(us, them):
 #   1) window.project_file_name()
 class FileGatherCommand(sublime_plugin.WindowCommand):
     def run(self):
-        files = _find_project_files(self.window, folders=[
+        files = find_project_files(self.window, folders=[
                 {
                     "path": "/home/tmartin/local/src/devember-2018/remote_build_server",
                     "folder_exclude_patterns":
