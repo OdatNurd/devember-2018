@@ -142,7 +142,7 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
             self.last_msg or "",
             lambda msg: self.send_message(msg), None, None)
 
-    def send_message(self, host, port, msg):
+    def send_message(self, msg):
         self.last_msg = msg
         self.connection.send(MessageMessage(msg))
 
