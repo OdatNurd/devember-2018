@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 // The state object for reading client data.
 public partial class BuildClient
