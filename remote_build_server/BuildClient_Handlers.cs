@@ -59,6 +59,11 @@ public partial class BuildClient
         Send(message);
     }
 
+    void HandleSetBuild(SetBuildMessage message)
+    {
+        Send(message);
+    }
+
     private void Dispatch(IProtocolMessage message)
     {
         // If we have not been introduced to the other end of the connection yet
@@ -82,6 +87,10 @@ public partial class BuildClient
 
             case MessageType.Error:
                 HandleError(message as ErrorMessage);
+                break;
+
+            case MessageType.SetBuild:
+                HandleSetBuild(message as SetBuildMessage);
                 break;
 
             default:
