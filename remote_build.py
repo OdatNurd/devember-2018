@@ -115,18 +115,13 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         self.connection = None
 
     def run(self, **kwargs):
-        print("rbc")
         if self.connection is None or self.connection.connected == False:
-            print("no connection")
             if all (k in kwargs for k in ("host", "port", "username", "password")):
-                print("have all, mc now")
                 return self.make_connection(kwargs["host"], kwargs["port"],
                                             kwargs["username"], kwargs["password"])
             else:
-                print("have none, prompt")
                 return self.window.run_command("remote_build_select_connection", kwargs)
 
-        print("q the c")
         self.query_message()
 
     def make_connection(self, host, port, username, password):
