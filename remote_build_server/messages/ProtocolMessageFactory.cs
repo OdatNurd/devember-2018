@@ -10,6 +10,7 @@ public enum MessageType
     Introduction = 0,
     Message = 1,
     Error = 2,
+    SetBuild = 3,
 }
 
 // An interface that represents a protocol message;
@@ -44,6 +45,9 @@ public class ProtocolMessageFactory
 
             case MessageType.Error:
                 return new ErrorMessage(data);
+
+            case MessageType.SetBuild:
+                return new SetBuildMessage(data);
 
             default:
                 throw new ArgumentOutOfRangeException("Unrecognized message type");

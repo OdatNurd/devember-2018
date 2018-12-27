@@ -195,3 +195,40 @@ class ErrorMessage(ProtocolMessage):
             msg_data)
 
 ProtocolMessage.register(ErrorMessage)
+
+
+class SetBuildMessage(ProtocolMessage):
+    """
+    This message is used to report generic message information to the remote
+    end of the connection.
+    """
+    def __init__(self, folders):
+        self.folders = folders
+
+    def __str__(self):
+        return "<SetBuild folders={0}>".format(self.folders)
+
+    @classmethod
+    def msg_id(cls):
+        return 3
+
+    @classmethod
+    def decode(cls, data):
+        pre_len = struct.calcsize(">HI")
+        _, msg_len = struct.unpack(">HI", data[:pre_len])
+
+        folder_data, = struct.unpack_from(">%ds" % msg_len, data, pre_len)
+        folders = folder_data.decode("utf-8").split("\x00")
+
+        return SetBuildMessage(folders)
+
+    def encode(self):
+        folder_data = "\x00".join(self.folders).encode("utf-8")
+        print("encoded folder data is %d bytes" % len(folder_data))
+        return struct.pack(">IHI%ds" % len(folder_data),
+            2 + 4 + len(folder_data),
+            SetBuildMessage.msg_id(),
+            len(folder_data),
+            folder_data)
+
+ProtocolMessage.register(SetBuildMessage)
