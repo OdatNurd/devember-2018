@@ -31,12 +31,17 @@ public class RemoteBuildServer
         IPHostEntry ipHostInfo = Dns.GetHostEntry(Dns.GetHostName());
         IPAddress ipAddress = null;
 
-        foreach (var ip in ipHostInfo.AddressList)
+        if (config.use_localhost == true)
+            ipAddress = IPAddress.Parse("127.0.0.1");
+        else
         {
-            if (ip.AddressFamily == AddressFamily.InterNetwork)
+            foreach (var ip in ipHostInfo.AddressList)
             {
-                ipAddress = ip;
-                break;
+                if (ip.AddressFamily == AddressFamily.InterNetwork)
+                {
+                    ipAddress = ip;
+                    break;
+                }
             }
         }
 

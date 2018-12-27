@@ -9,6 +9,9 @@ public class RemoteBuildConfig
     // The base cache path; all remote builds take place somewhere under here.
     public string base_cache;
 
+    // Should we listen on localhost instead of the "normal" host name?
+    public bool use_localhost = false;
+
     // The list of users that have access to remote builds.
     public List<RemoteBuildUser> users;
 
