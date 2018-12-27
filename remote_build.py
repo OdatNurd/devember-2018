@@ -10,8 +10,11 @@ import sys
 
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
+from .messages import SetBuildMessage
 
 from .network import ConnectionManager, Notification, log
+
+from .file_gather import find_project_files
 
 
 ### ---------------------------------------------------------------------------
@@ -108,8 +111,6 @@ class RemoteBuildServerEnterPasswordCommand(sublime_plugin.WindowCommand):
 
 
 class RemoteBuildCommand(sublime_plugin.WindowCommand):
-    last_msg = "Hello, World!"
-
     def __init__(self, window):
         super().__init__(window)
         self.connection = None
@@ -122,24 +123,19 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
             else:
                 return self.window.run_command("remote_build_select_connection", kwargs)
 
-        self.query_message()
+        self.start_build()
 
     def make_connection(self, host, port, username, password):
         self.connection = netManager.connect(host, port)
         self.connection.register(lambda c,n: self.result(c,n))
         self.connection.send(IntroductionMessage(username, password))
 
-        self.query_message()
+        self.start_build()
 
-    def query_message(self):
-        sublime.active_window().show_input_panel(
-            "Message:",
-            self.last_msg or "",
-            lambda msg: self.send_message(msg), None, None)
-
-    def send_message(self, msg):
-        self.last_msg = msg
-        self.connection.send(MessageMessage(msg))
+    def start_build(self):
+        project_files = find_project_files(self.window)
+        project_folders = list(project_files.keys())
+        self.connection.send(SetBuildMessage(project_folders))
 
     def result(self, connection, notification):
         log("==> Callback: {0}:{1} = {3}, {2}",
