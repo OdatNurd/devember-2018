@@ -13,6 +13,18 @@ public partial class BuildClient
     private bool hasIntroduced = false;
 
     /// <summary>
+    /// If we have been introduced successfully, this stores the hostname that
+    /// the client is currently connecting from.
+    /// </summary>
+    private string remote_host;
+
+    /// <summary>
+    /// If we have been introduced successfully, this stores the platform that
+    /// the client is currently connecting from.
+    /// </summary>
+    private string remote_platform;
+
+    /// <summary>
     /// Transmit an error message to the user, optionally closing the connection
     /// once the message has been transmitted.
     /// </summary>
@@ -76,7 +88,7 @@ public partial class BuildClient
 
         switch (message.MsgID)
         {
-            // These messages are onlu valid when transmitted from the server to
+            // These messages are only valid when transmitted from the server to
             // the client; if the client sends them to us, issue a protocol
             // violation.
             case MessageType.Message:
@@ -103,40 +115,58 @@ public partial class BuildClient
         }
     }
 
+    /// <summary>
+    /// Handle the incoming Introduction message from the remote end of the
+    /// connection, validating the information. The response to this message is
+    /// either to set up our object and send a text message back, or to respond
+    /// with an error.
+    /// </summary>
     void HandleIntroduction(IntroductionMessage message)
     {
+        // It is an error to receive an introduction message after the client
+        // has already introduced themselves.
         if (hasIntroduced)
         {
-            SendError(1000, "Introduction message has already been received");
+            ProtocolViolationMessage(message, "An introduction message has already been received");
             return;
         }
 
+        // If the client is not using the correct protocol version, then error
+        // out the connection; a more robust implementation would try to tailor
+        // to the age of the client and fall back to an older protocol.
         if (message.ProtocolVersion != 1)
         {
-            SendError(1001, "Invalid protocol; only version 1 is supported");
+            SendError(1000, "Invalid protocol; only version 1 is supported");
             return;
         }
 
-        // No matter what, we've been introduced now.
+        // Consider ourselves introduced now.
         hasIntroduced = true;
 
-        // Use the information from the introduction message to log in the user
+        // Using the information from the message, validate that the user is
+        // allowed to connect and has provided the appropriate credentials.
+        //
+        // This grabs the appropriate record out of the configuration, if there
+        // is one.
         user = config.LoginUser(message.User, message.Password);
 
+        // If we didn't find an appropriate user, then return an error message
+        // back and we're done.
         if (user == null)
-            SendError(1, "Invalid username/password");
-        else
-            SendMessage(String.Format("Hello, {0}", message.User));
-    }
+        {
+            SendError(1001, "Invalid username/password; login denied");
+            return;
+        }
 
-    void HandleMessage(MessageMessage message)
-    {
-        Send(message);
-    }
+        // Save the hostname and platform.
+        remote_host = message.Hostname;
+        remote_platform = message.Platform;
 
-    void HandleError(ErrorMessage message)
-    {
-        Send(message);
+        // Welcome the user
+        SendMessage(String.Format("Hello, {0} from {1} {2}",
+            user.username,
+            remote_platform,
+            remote_host));
     }
 
     void HandleSetBuild(SetBuildMessage message)
