@@ -23,6 +23,40 @@ public partial class BuildClient
         Send(new MessageMessage(msg));
     }
 
+    private void Dispatch(IProtocolMessage message)
+    {
+        // If we have not been introduced to the other end of the connection yet
+        // then trigger an error unless this message is the introduction message
+        // itself.
+        if (hasIntroduced == false && message.MsgID != MessageType.Introduction)
+        {
+            SendError(1002, "Invalid communications; no Introduction received");
+            return;
+        }
+
+        switch (message.MsgID)
+        {
+            case MessageType.Introduction:
+                HandleIntroduction(message as IntroductionMessage);
+                break;
+
+            case MessageType.Message:
+                HandleMessage(message as MessageMessage);
+                break;
+
+            case MessageType.Error:
+                HandleError(message as ErrorMessage);
+                break;
+
+            case MessageType.SetBuild:
+                HandleSetBuild(message as SetBuildMessage);
+                break;
+
+            default:
+                throw new Exception("Unknown message type");
+        }
+    }
+
     void HandleIntroduction(IntroductionMessage message)
     {
         if (hasIntroduced)
@@ -62,39 +96,5 @@ public partial class BuildClient
     void HandleSetBuild(SetBuildMessage message)
     {
         Send(message);
-    }
-
-    private void Dispatch(IProtocolMessage message)
-    {
-        // If we have not been introduced to the other end of the connection yet
-        // then trigger an error unless this message is the introduction message
-        // itself.
-        if (hasIntroduced == false && message.MsgID != MessageType.Introduction)
-        {
-            SendError(1002, "Invalid communications; no Introduction received");
-            return;
-        }
-
-        switch (message.MsgID)
-        {
-            case MessageType.Introduction:
-                HandleIntroduction(message as IntroductionMessage);
-                break;
-
-            case MessageType.Message:
-                HandleMessage(message as MessageMessage);
-                break;
-
-            case MessageType.Error:
-                HandleError(message as ErrorMessage);
-                break;
-
-            case MessageType.SetBuild:
-                HandleSetBuild(message as SetBuildMessage);
-                break;
-
-            default:
-                throw new Exception("Unknown message type");
-        }
     }
 }
