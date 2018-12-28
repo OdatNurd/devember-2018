@@ -138,11 +138,11 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         self.connection.send(SetBuildMessage(project_folders))
 
     def result(self, connection, notification):
-        log("==> Callback: {0}:{1} = {3}, {2}",
-            connection.host, connection.port,
-            "connected" if connection.connected else "disconnected",
-            notification,
-            panel=True)
+        # log("==> Callback: {0}:{1} = {3}, {2}",
+        #     connection.host, connection.port,
+        #     "connected" if connection.connected else "disconnected",
+        #     notification,
+        #     panel=True)
 
         if notification == Notification.MESSAGE:
             msg = connection.receive()
