@@ -6,14 +6,16 @@ using MiscUtil.Conversion;
 public class SetBuildMessage : IProtocolMessage
 {
     public List<string> Folders { get ; private set; } = null;
+    public string BuildID { get ; private set; } = null;
 
     public MessageType MsgID { get ; private set; } = MessageType.SetBuild;
     public bool CloseAfterSending { get ; set; } = false;
 
 
-    public SetBuildMessage(List<string> folders)
+    public SetBuildMessage(string build_id, List<string> folders)
     {
         Folders = folders;
+        BuildID = build_id;
     }
 
     public SetBuildMessage(byte[] data)
@@ -28,11 +30,18 @@ public class SetBuildMessage : IProtocolMessage
 
         var folderStr = Encoding.UTF8.GetString(data, 6, (int) folderLength);
         Folders = new List<string>(folderStr.Split("\x00"));
+
+        BuildID = Folders[0];
+        Folders.RemoveAt(0);
     }
 
     public byte[] Encode()
     {
-        byte[] folderBytes = Encoding.UTF8.GetBytes(string.Join("\x00", Folders));
+        var encode_list = new List<string>();
+        encode_list.Add(BuildID);
+        encode_list.AddRange(Folders);
+
+        byte[] folderBytes = Encoding.UTF8.GetBytes(string.Join("\x00", encode_list));
         UInt32 folderLength = (UInt32) folderBytes.Length;
 
         byte[] msg = new byte[4 + 2 + 4 + folderLength];
@@ -47,6 +56,8 @@ public class SetBuildMessage : IProtocolMessage
 
     public override string ToString()
     {
-        return String.Format("<Message folders={1}>", Folders);
+        return String.Format("<Message build_id={0} folders=[{1}]>",
+            BuildID,
+            String.Join(", ", Folders.ToArray()));
     }
 }
