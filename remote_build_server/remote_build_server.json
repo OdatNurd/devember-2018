@@ -1,5 +1,5 @@
 {
-    "base_cache": "D:/remote_build_cache/",
+    "base_cache": "./remote_build_cache/",
     "use_localhost": true,
 
     "users": [

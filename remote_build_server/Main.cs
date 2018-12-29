@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -18,6 +19,27 @@ public class RemoteBuildServer
     public RemoteBuildServer()
     {
         config = RemoteBuildConfig.Load("./remote_build_server.json");
+
+        ExpandCachePath();
+        Console.WriteLine("Base Cache Path: {0}", config.base_cache);
+    }
+
+    // Expand out the configured base cache path, if needed, into a fully
+    // qualified path name.
+    void ExpandCachePath()
+    {
+        // Get the configured cache path.
+        var cache_path = config.base_cache;
+
+        // If the configured cache path is relative, then turn it into an
+        // absolute path.
+        if (Path.IsPathFullyQualified(cache_path) == false)
+            cache_path = Path.GetFullPath(Path.Combine(
+                Directory.GetCurrentDirectory(),
+                cache_path));
+
+        // Store the full path now.
+        config.full_cache_path = cache_path;
     }
 
     // Start listening for incoming connections on this host.

@@ -7,7 +7,15 @@ using Newtonsoft.Json;
 public class RemoteBuildConfig
 {
     // The base cache path; all remote builds take place somewhere under here.
+    // This is the configured version, which can be either absolute or relative
+    // as desired.
     public string base_cache;
+
+    // This is the fully expanded version of the base_cache, which may be the
+    // same or may be different, depending on whether the base_cache is a
+    // relative or absolute path.
+    [JsonIgnore]
+    public string full_cache_path = null;
 
     // Should we listen on localhost instead of the "normal" host name?
     public bool use_localhost = false;
