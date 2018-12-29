@@ -145,15 +145,20 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         #     notification,
         #     panel=True)
 
-        if notification == Notification.MESSAGE:
-            msg = connection.receive()
-            if msg is None:
-                log(" -> Error: Notification says message, queue says no")
-            else:
-                log("Received: '{0}'", msg, panel=True)
-
         if connection.connected == False:
             self.connection = None
+
+        if notification == Notification.MESSAGE:
+            msg = connection.receive()
+            while msg is not None:
+                if isinstance(msg, MessageMessage):
+                    log("Message: {0}", msg.msg, panel=True)
+                elif isinstance(msg, ErrorMessage):
+                    log("Error: [{0}] => {1}", msg.error_code, msg.error_msg, panel=True)
+                else:
+                    log("Unhandled: {0}", msg, panel=True)
+
+                msg = connection.receive()
 
 
 ### ---------------------------------------------------------------------------
