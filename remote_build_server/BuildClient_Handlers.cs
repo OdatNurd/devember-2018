@@ -169,8 +169,13 @@ public partial class BuildClient
             remote_host));
     }
 
+    /// <summary>
+    /// Handle setting up for a new build for this client.
+    /// </summary>
     void HandleSetBuild(SetBuildMessage message)
     {
-        Send(message);
+        Console.WriteLine("SetBuild: {0}", message);
+
+        EchoMessage(message);
     }
 }
