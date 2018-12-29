@@ -1,4 +1,7 @@
 using System;
+using System.IO;
+using System.Collections.Generic;
+
 
 // The state object for reading client data.
 public partial class BuildClient
@@ -23,6 +26,19 @@ public partial class BuildClient
     /// the client is currently connecting from.
     /// </summary>
     private string remote_platform;
+
+    /// <summary>
+    /// If we are executing a build, this stores the build ID of the current
+    /// build.
+    /// </summary>
+    private string current_build_id;
+
+    /// <summary>
+    /// If we are executing a build, this is a mapping that indicates what the
+    /// remote folders are named, and what the local names for those same
+    /// folders is.
+    /// </summary>
+    private Dictionary<string, string> current_build_folders;
 
     /// <summary>
     /// Transmit an error message to the user, optionally closing the connection
@@ -174,8 +190,36 @@ public partial class BuildClient
     /// </summary>
     void HandleSetBuild(SetBuildMessage message)
     {
-        Console.WriteLine("SetBuild: {0}", message);
+        // Store the build ID and build and get ready to map build folders
+        current_build_id = message.BuildID;
+        current_build_folders = new Dictionary<string, string>();
 
-        EchoMessage(message);
+        // All of the folders that we want to use for the build will be based in
+        // this root, which is based on the configured cache path with some path
+        // elements that separate the items for different users on different
+        // platforms and hosts.
+        //
+        // The last path component in the root is the build ID value, which will
+        // remain the same for multiple builds from the same host OS for the
+        // same folders, based on the uniqueness constraint of the build ID
+        // value.
+        var local_root_folder = Path.Combine(
+            config.full_cache_path,
+            user.username,
+            remote_platform,
+            remote_host,
+            current_build_id);
+
+        SendMessage(String.Format("SetBuild OK: Using Build {0}", current_build_id));
+        SendMessage(String.Format("Build root: {0}", local_root_folder));
+
+        foreach (var remote_folder in message.Folders)
+        {
+            var local_folder = Path.Combine(local_root_folder, Path.GetFileName(remote_folder));
+
+            current_build_folders[remote_folder] = local_folder;
+
+            Directory.CreateDirectory(local_folder);
+        }
     }
 }
