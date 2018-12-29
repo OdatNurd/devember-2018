@@ -3,6 +3,9 @@ import sublime
 import inspect
 import struct
 import socket
+import hashlib
+
+from os.path import dirname, basename
 
 
 class ProtocolMessage():
@@ -199,18 +202,32 @@ ProtocolMessage.register(ErrorMessage)
 
 class SetBuildMessage(ProtocolMessage):
     """
-    This message is used to report generic message information to the remote
-    end of the connection.
+    This message is used to indicate to the remote server that we are preparing
+    to execute a build. This gives the folders that are taking part in the
+    build as well as a unique build ID value (sha1 hash) that uniquely
+    represents the build.
     """
-    def __init__(self, folders):
+    def __init__(self, build_id, folders):
         self.folders = folders
+        self.build_id = build_id
 
     def __str__(self):
-        return "<SetBuild folders={0}>".format(self.folders)
+        return "<SetBuild build_id='{0}' folders={1}>".format(
+            self.build_id,
+            self.folders)
 
     @classmethod
     def msg_id(cls):
         return 3
+
+    @classmethod
+    def make_build_id(cls, folders):
+        folders = sorted(folders, key=lambda fn: (dirname(fn), basename(fn)))
+        sha1 = hashlib.sha1()
+        for folder in folders:
+            sha1.update(folder.encode('utf-8'))
+
+        return sha1.hexdigest()
 
     @classmethod
     def decode(cls, data):
@@ -220,15 +237,19 @@ class SetBuildMessage(ProtocolMessage):
         folder_data, = struct.unpack_from(">%ds" % msg_len, data, pre_len)
         folders = folder_data.decode("utf-8").split("\x00")
 
-        return SetBuildMessage(folders)
+        build_id = folders[0]
+        del folders[0]
+
+        return SetBuildMessage(build_id, folders)
 
     def encode(self):
-        folder_data = "\x00".join(self.folders).encode("utf-8")
-        print("encoded folder data is %d bytes" % len(folder_data))
-        return struct.pack(">IHI%ds" % len(folder_data),
-            2 + 4 + len(folder_data),
+        data = "\x00".join([
+            f for sub in [[self.build_id], self.folders] for f in sub
+            ]).encode("utf-8")
+        return struct.pack(">IHI%ds" % len(data),
+            2 + 4 + len(data),
             SetBuildMessage.msg_id(),
-            len(folder_data),
-            folder_data)
+            len(data),
+            data)
 
 ProtocolMessage.register(SetBuildMessage)

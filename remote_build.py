@@ -135,7 +135,8 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
     def start_build(self):
         project_files = find_project_files(self.window)
         project_folders = list(project_files.keys())
-        self.connection.send(SetBuildMessage(project_folders))
+        project_id = SetBuildMessage.make_build_id(project_folders)
+        self.connection.send(SetBuildMessage(project_id, project_folders))
 
     def result(self, connection, notification):
         # log("==> Callback: {0}:{1} = {3}, {2}",
