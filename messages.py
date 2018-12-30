@@ -253,3 +253,38 @@ class SetBuildMessage(ProtocolMessage):
             data)
 
 ProtocolMessage.register(SetBuildMessage)
+
+
+class AcknowledgeMessage(ProtocolMessage):
+    """
+    This message is used by the server to signal the acknowledgment of a
+    message transmitted by the client. This is generally paired with a textual
+    Message, allowing the code to know the result of the message  without
+    having to try and parse or otherwise understand the return text.
+    """
+    def __init__(self, message_id, positive=True):
+        self.message_id = message_id
+        self.positive = positive
+
+    def __str__(self):
+        return "<Acknowledge message_id={0} positive={1}>".format(
+            self.message_id, self.positive)
+
+    @classmethod
+    def msg_id(cls):
+        return 4
+
+    @classmethod
+    def decode(cls, data):
+        _, message_id, positive = struct.unpack(">HH?", data)
+
+        return AcknowledgeMessage(message_id, positive)
+
+    def encode(self):
+        return struct.pack(">IHH?",
+            2 + 2 + 1,
+            AcknowledgeMessage.msg_id(),
+            self.message_id,
+            self.positive)
+
+ProtocolMessage.register(AcknowledgeMessage)

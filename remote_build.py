@@ -10,7 +10,7 @@ import sys
 
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
-from .messages import SetBuildMessage
+from .messages import SetBuildMessage, AcknowledgeMessage
 
 from .network import ConnectionManager, Notification, log
 
