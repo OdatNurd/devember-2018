@@ -107,7 +107,6 @@ public partial class BuildClient
     {
         try
         {
-
             // Convert the message from it's partial data format into a complete
             // message.
             IProtocolMessage message = inMsg.getMessage();
@@ -147,6 +146,8 @@ public partial class BuildClient
                     HandleSetBuild(message as SetBuildMessage);
                     break;
 
+                // Temporarily echo file content messages back to the client as
+                // a test that our encode/decode mechanisms work as expected.
                 case MessageType.FileContent:
                     EchoMessage(message);
                     break;
@@ -213,6 +214,7 @@ public partial class BuildClient
             user.username,
             remote_platform,
             remote_host);
+        Acknowledge(MessageType.Introduction);
     }
 
     /// <summary>
@@ -240,9 +242,6 @@ public partial class BuildClient
             remote_host,
             current_build_id);
 
-        SendMessage("SetBuild OK: Using Build {0}", current_build_id);
-        SendMessage("Build root: {0}", local_root_folder);
-
         foreach (var remote_folder in message.Folders)
         {
             var local_folder = Path.Combine(local_root_folder, Path.GetFileName(remote_folder));
@@ -251,5 +250,9 @@ public partial class BuildClient
 
             Directory.CreateDirectory(local_folder);
         }
+
+        SendMessage("SetBuild OK: Using Build {0}", current_build_id);
+        SendMessage("Build root: {0}", local_root_folder);
+        Acknowledge(MessageType.SetBuild);
     }
 }
