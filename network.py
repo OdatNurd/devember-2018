@@ -11,11 +11,7 @@ import os
 import time
 import textwrap
 
-# https://bitbucket.org/stoneleaf/enum34
-from .enum import Enum
-
-from .messages import ProtocolMessage, IntroductionMessage
-from .messages import MessageMessage, ErrorMessage
+from .messages import ProtocolMessage
 
 
 ### ---------------------------------------------------------------------------
@@ -58,7 +54,7 @@ def log(msg, *args, dialog=False, error=False, panel=False, **kwargs):
 ### ---------------------------------------------------------------------------
 
 
-class Notification(Enum):
+class Notification():
     """
     An enumeration for that various connection notifications that a Connection
     instance may raise.
