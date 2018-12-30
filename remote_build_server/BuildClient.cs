@@ -151,9 +151,8 @@ public partial class BuildClient
                 // and get ready for another received message.
                 if (inMsg.IsComplete())
                 {
-                    var msg = inMsg.getMessage();
+                    client.Dispatch(inMsg);
                     inMsg = new PartialMessage();
-                    client.Dispatch(msg);
                 }
             }
 

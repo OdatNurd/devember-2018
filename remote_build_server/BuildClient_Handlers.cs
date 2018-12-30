@@ -94,8 +94,13 @@ public partial class BuildClient
     /// of the protocol handling work on our end, handling messages as
     /// appropriate.
     /// </summary>
-    private void Dispatch(IProtocolMessage message)
+    private void Dispatch(PartialMessage inMsg)
     {
+        // Convert the message from it's partial data format into a complete
+        // message.
+        IProtocolMessage message = inMsg.getMessage();
+        Console.WriteLine("Received: {0}", message);
+
         // If we have not been introduced to the other end of the connection yet
         // then trigger an error unless this message is the introduction message
         // itself.
