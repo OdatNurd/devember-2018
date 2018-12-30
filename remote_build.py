@@ -139,9 +139,8 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         project_id = SetBuildMessage.make_build_id(project_folders)
         self.connection.send(SetBuildMessage(project_id, project_folders))
 
-        msg = FileContentMessage(project_folders[0], "LICENSE")
-        print(msg)
-        self.connection.send(msg)
+        # Prepare the message, but don't send it yet.
+        self.content_msg = FileContentMessage(project_folders[0], "LICENSE")
 
     def result(self, connection, notification):
         # log("==> Callback: {0}:{1} = {3}, {2}",
@@ -158,11 +157,21 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
             while msg is not None:
                 if isinstance(msg, MessageMessage):
                     log("Message: {0}", msg.msg, panel=True)
+
                 elif isinstance(msg, ErrorMessage):
                     log("Error: [{0}] => {1}", msg.error_code, msg.error_msg, panel=True)
+
+                elif isinstance(msg, AcknowledgeMessage):
+                    if msg.message_id == SetBuildMessage.msg_id() and msg.positive:
+                        self.connection.send(self.content_msg)
+
                 elif isinstance(msg, FileContentMessage):
+                    log("=== Received File ===", panel=True)
                     log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
+                    log("======================", panel=True)
                     log("{0}", msg.file_content, panel=True)
+                    log("======================", panel=True)
+
                 else:
                     log("Unhandled: {0}", msg, panel=True)
 
