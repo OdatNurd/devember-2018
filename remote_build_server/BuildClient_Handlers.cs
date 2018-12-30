@@ -63,6 +63,25 @@ public partial class BuildClient
     }
 
     /// <summary>
+    /// Acknowledge (either positive or negative, depending on ack) the
+    /// reception of the message of the provided type.
+    /// </summary>
+    void Acknowledge(MessageType msgType, bool ack=true)
+    {
+        Send(new AcknowledgeMessage(msgType, ack));
+    }
+
+    /// <summary>
+    /// Handle an incoming protocol message by echoing it back to the remote
+    /// client exactly as received. This is a useful test that both ends can
+    /// successfully encode and decode the message.
+    /// </summary>
+    void EchoMessage(IProtocolMessage message)
+    {
+        Send(message);
+    }
+
+    /// <summary>
     /// Handle an incoming protocol message by sending back an error message
     /// indicating that a message of this type is not allowed at this point in
     /// the conversation.
@@ -77,16 +96,6 @@ public partial class BuildClient
 
         if (reason != null)
             SendError(true, 9999, reason, args);
-    }
-
-    /// <summary>
-    /// Handle an incoming protocol message by echoing it back to the remote
-    /// client exactly as received. This is a useful test that both ends can
-    /// successfully encode and decode the message.
-    /// </summary>
-    void EchoMessage(IProtocolMessage message)
-    {
-        Send(message);
     }
 
     /// <summary>
