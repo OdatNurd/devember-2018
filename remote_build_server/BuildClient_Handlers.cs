@@ -56,9 +56,9 @@ public partial class BuildClient
     /// for all textual communications which are not considered an out and out
     /// error.
     /// </summary>
-    void SendMessage(string msg)
+    void SendMessage(string msg, params object[] args)
     {
-        Send(new MessageMessage(msg));
+        Send(new MessageMessage(String.Format(msg, args)));
     }
 
     /// <summary>
@@ -179,10 +179,10 @@ public partial class BuildClient
         remote_platform = message.Platform;
 
         // Welcome the user
-        SendMessage(String.Format("Hello, {0} from {1} {2}",
+        SendMessage("Hello, {0} from {1} {2}",
             user.username,
             remote_platform,
-            remote_host));
+            remote_host);
     }
 
     /// <summary>
@@ -210,8 +210,8 @@ public partial class BuildClient
             remote_host,
             current_build_id);
 
-        SendMessage(String.Format("SetBuild OK: Using Build {0}", current_build_id));
-        SendMessage(String.Format("Build root: {0}", local_root_folder));
+        SendMessage("SetBuild OK: Using Build {0}", current_build_id);
+        SendMessage("Build root: {0}", local_root_folder);
 
         foreach (var remote_folder in message.Folders)
         {
