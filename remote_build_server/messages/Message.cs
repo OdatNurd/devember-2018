@@ -45,6 +45,6 @@ public class MessageMessage : IProtocolMessage
 
     public override string ToString()
     {
-        return String.Format("<Message msg='{1}'>", Msg);
+        return String.Format("<Message msg='{0}'>", Msg);
     }
 }
