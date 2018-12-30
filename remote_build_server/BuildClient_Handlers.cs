@@ -138,6 +138,10 @@ public partial class BuildClient
                     HandleSetBuild(message as SetBuildMessage);
                     break;
 
+                case MessageType.FileContent:
+                    EchoMessage(message);
+                    break;
+
                 default:
                     throw new Exception("Unknown message type");
             }

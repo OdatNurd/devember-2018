@@ -11,6 +11,7 @@ import sys
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
 from .messages import SetBuildMessage, AcknowledgeMessage
+from .messages import FileContentMessage
 
 from .network import ConnectionManager, Notification, log
 
@@ -138,6 +139,10 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         project_id = SetBuildMessage.make_build_id(project_folders)
         self.connection.send(SetBuildMessage(project_id, project_folders))
 
+        msg = FileContentMessage(project_folders[0], "LICENSE")
+        print(msg)
+        self.connection.send(msg)
+
     def result(self, connection, notification):
         # log("==> Callback: {0}:{1} = {3}, {2}",
         #     connection.host, connection.port,
@@ -155,6 +160,9 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
                     log("Message: {0}", msg.msg, panel=True)
                 elif isinstance(msg, ErrorMessage):
                     log("Error: [{0}] => {1}", msg.error_code, msg.error_msg, panel=True)
+                elif isinstance(msg, FileContentMessage):
+                    log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
+                    log("{0}", msg.file_content, panel=True)
                 else:
                     log("Unhandled: {0}", msg, panel=True)
 

@@ -5,7 +5,7 @@ import struct
 import socket
 import hashlib
 
-from os.path import dirname, basename
+from os.path import dirname, basename, join
 
 
 class ProtocolMessage():
@@ -288,3 +288,53 @@ class AcknowledgeMessage(ProtocolMessage):
             self.positive)
 
 ProtocolMessage.register(AcknowledgeMessage)
+
+
+class FileContentMessage(ProtocolMessage):
+    """
+    This message is used by both the client and the server to transmit file
+    contents around. In a better implementation this would be a partial message
+    which can be slowly spooled off of disk and transmitted, but for expediency
+    of Devember being almost over we're instead just allocating data for the
+    entire content of the file in one shot.
+    """
+    def __init__(self, root_path, relative_name, read_file=True):
+        self.root_path = root_path
+        self.relative_name = relative_name
+
+        if read_file:
+            with open(join(root_path, relative_name), "rb") as file:
+                self.file_content = file.read()
+
+    def __str__(self):
+        return "<FileContent root='{0}' name='{1}' size={2}>".format(
+            self.root_path, self.relative_name, len(self.file_content))
+
+    @classmethod
+    def msg_id(cls):
+        return 5
+
+    @classmethod
+    def decode(cls, data):
+        pre_len = struct.calcsize(">H256s256sI")
+        _, root, name, file_length = struct.unpack(">H256s256sI", data[:pre_len])
+
+        msg = FileContentMessage(root.decode('utf-8').rstrip("\000"),
+                                 name.decode('utf-8').rstrip("\000"),
+                                 read_file=False)
+        content, = struct.unpack_from(">%ds" % file_length, data, pre_len)
+
+        msg.file_content = content.decode('utf-8')
+
+        return msg
+
+    def encode(self):
+        return struct.pack(">IH256s256sI%ds" % len(self.file_content),
+            2 + 256 + 256 + 4 + len(self.file_content),
+            FileContentMessage.msg_id(),
+            self.root_path.encode('utf-8'),
+            self.relative_name.encode('utf-8'),
+            len(self.file_content),
+            self.file_content)
+
+ProtocolMessage.register(FileContentMessage)

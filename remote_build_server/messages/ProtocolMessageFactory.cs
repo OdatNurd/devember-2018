@@ -12,6 +12,7 @@ public enum MessageType
     Error = 2,
     SetBuild = 3,
     Acknowledge = 4,
+    FileContent = 5,
 }
 
 // An interface that represents a protocol message;
@@ -52,6 +53,9 @@ public class ProtocolMessageFactory
 
             case MessageType.Acknowledge:
                 return new AcknowledgeMessage(data);
+
+            case MessageType.FileContent:
+                return new FileContentMessage(data);
 
             default:
                 throw new ArgumentOutOfRangeException("Unrecognized message type");
