@@ -96,47 +96,55 @@ public partial class BuildClient
     /// </summary>
     private void Dispatch(PartialMessage inMsg)
     {
-        // Convert the message from it's partial data format into a complete
-        // message.
-        IProtocolMessage message = inMsg.getMessage();
-        Console.WriteLine("Recv: {0}", message);
-
-        // If we have not been introduced to the other end of the connection yet
-        // then trigger an error unless this message is the introduction message
-        // itself.
-        if (hasIntroduced == false && message.MsgID != MessageType.Introduction)
+        try
         {
-            ProtocolViolationMessage(message, "First message must be an introduction");
-            return;
+
+            // Convert the message from it's partial data format into a complete
+            // message.
+            IProtocolMessage message = inMsg.getMessage();
+            Console.WriteLine("Recv: {0}", message);
+
+            // If we have not been introduced to the other end of the connection yet
+            // then trigger an error unless this message is the introduction message
+            // itself.
+            if (hasIntroduced == false && message.MsgID != MessageType.Introduction)
+            {
+                ProtocolViolationMessage(message, "First message must be an introduction");
+                return;
+            }
+
+            switch (message.MsgID)
+            {
+                // These messages are only valid when transmitted from the server to
+                // the client; if the client sends them to us, issue a protocol
+                // violation.
+                case MessageType.Message:
+                case MessageType.Error:
+                case MessageType.Acknowledge:
+                    ProtocolViolationMessage(message, "These messages are for server use only");
+                    break;
+
+                // This should always be the first message received on a connection
+                // (and is only valid as the first message). It has specific
+                // handling associated with it.
+                case MessageType.Introduction:
+                    HandleIntroduction(message as IntroductionMessage);
+                    break;
+
+                // The client is indicating that it's time to set up a new build.
+                // This message tells us what paths are being built so that we can
+                // set things up on our end.
+                case MessageType.SetBuild:
+                    HandleSetBuild(message as SetBuildMessage);
+                    break;
+
+                default:
+                    throw new Exception("Unknown message type");
+            }
         }
-
-        switch (message.MsgID)
+        catch (Exception err)
         {
-            // These messages are only valid when transmitted from the server to
-            // the client; if the client sends them to us, issue a protocol
-            // violation.
-            case MessageType.Message:
-            case MessageType.Error:
-            case MessageType.Acknowledge:
-                ProtocolViolationMessage(message, "These messages are for server use only");
-                break;
-
-            // This should always be the first message received on a connection
-            // (and is only valid as the first message). It has specific
-            // handling associated with it.
-            case MessageType.Introduction:
-                HandleIntroduction(message as IntroductionMessage);
-                break;
-
-            // The client is indicating that it's time to set up a new build.
-            // This message tells us what paths are being built so that we can
-            // set things up on our end.
-            case MessageType.SetBuild:
-                HandleSetBuild(message as SetBuildMessage);
-                break;
-
-            default:
-                throw new Exception("Unknown message type");
+            SendError(true, 9998, "Server Exception: {0}", err.Message);
         }
     }
 
