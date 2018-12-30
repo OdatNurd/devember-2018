@@ -22,7 +22,7 @@ public static class Extensions
         if (input.Length > length)
             input = input.Substring(0, length);
         else
-            input.PadRight(length, '\0');
+            input = input.PadRight(length, '\0');
 
         return Encoding.UTF8.GetBytes(input);
     }
