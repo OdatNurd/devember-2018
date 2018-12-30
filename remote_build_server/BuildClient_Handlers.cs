@@ -44,10 +44,11 @@ public partial class BuildClient
     /// Transmit an error message to the user, optionally closing the connection
     /// once the message has been transmitted.
     /// </summary>
-    void SendError(UInt32 code, string errorMsg, bool closeAfter=true)
+    void SendError(bool closeAfter, UInt32 code, string msg, params object[] args)
     {
-        var error = new ErrorMessage(code, errorMsg);
+        var error = new ErrorMessage(code, String.Format(msg, args));
         error.CloseAfterSending = closeAfter;
+
         Send(error);
     }
 
@@ -68,12 +69,13 @@ public partial class BuildClient
     /// </summary>
     void ProtocolViolationMessage(IProtocolMessage message, string reason=null)
     {
-        SendError(9999, String.Format(
+        SendError(reason == null,
+            9999,
             "Received unexpected message with id={0}; protocol violation",
-            message.MsgID), reason == null);
+            message.MsgID);
 
         if (reason != null)
-            SendError(9999, reason);
+            SendError(true, 9999, reason);
     }
 
     /// <summary>
@@ -152,7 +154,7 @@ public partial class BuildClient
         // to the age of the client and fall back to an older protocol.
         if (message.ProtocolVersion != 1)
         {
-            SendError(1000, "Invalid protocol; only version 1 is supported");
+            SendError(true, 1000, "Invalid protocol; only version 1 is supported");
             return;
         }
 
@@ -170,7 +172,7 @@ public partial class BuildClient
         // back and we're done.
         if (user == null)
         {
-            SendError(1001, "Invalid username/password; login denied");
+            SendError(true, 1001, "Invalid username/password; login denied");
             return;
         }
 
