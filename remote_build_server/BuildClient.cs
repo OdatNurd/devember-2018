@@ -99,6 +99,8 @@ public partial class BuildClient
             if (outQueue.TryDequeue(out msg) == false)
                 return;
 
+            Console.WriteLine("Send: {0}", msg);
+
             sendBuffer = msg.Encode();
             closeAfterSending = msg.CloseAfterSending;
             bytesSent = 0;
@@ -138,7 +140,7 @@ public partial class BuildClient
                 return;
             }
 
-            Console.WriteLine("==> Read {0} bytes", bytesRead);
+            // Console.WriteLine("==> Read {0} bytes", bytesRead);
 
             int bytesUsed = 0;
             while (bytesUsed != bytesRead)
@@ -185,12 +187,12 @@ public partial class BuildClient
             // Complete the transmission of the data to the remote end and
             // indicate that we did so.
             int bytesSent = socket.EndSend(ar);
-            Console.WriteLine("Sent {0} bytes to client.", bytesSent);
+            // Console.WriteLine("Sent {0} bytes to client.", bytesSent);
             client.bytesSent += bytesSent;
 
             if (client.bytesSent == client.sendBuffer.Length)
             {
-                Console.WriteLine("Finished message transmission");
+                // Console.WriteLine("Send: Complete");
                 client.sendBuffer = null;
                 client.bytesSent = 0;
 

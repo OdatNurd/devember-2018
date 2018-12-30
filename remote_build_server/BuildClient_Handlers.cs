@@ -99,7 +99,7 @@ public partial class BuildClient
         // Convert the message from it's partial data format into a complete
         // message.
         IProtocolMessage message = inMsg.getMessage();
-        Console.WriteLine("Received: {0}", message);
+        Console.WriteLine("Recv: {0}", message);
 
         // If we have not been introduced to the other end of the connection yet
         // then trigger an error unless this message is the introduction message
