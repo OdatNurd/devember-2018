@@ -67,7 +67,8 @@ public partial class BuildClient
     /// indicating that a message of this type is not allowed at this point in
     /// the conversation.
     /// </summary>
-    void ProtocolViolationMessage(IProtocolMessage message, string reason=null)
+    void ProtocolViolationMessage(IProtocolMessage message,
+                                  string reason=null, params object[] args)
     {
         SendError(reason == null,
             9999,
@@ -75,7 +76,7 @@ public partial class BuildClient
             message.MsgID);
 
         if (reason != null)
-            SendError(true, 9999, reason);
+            SendError(true, 9999, reason, args);
     }
 
     /// <summary>
