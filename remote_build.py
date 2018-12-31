@@ -159,11 +159,21 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         Kick off a build by capturing the list of project folders and files
         and announcing it to the server.
         """
-        self.project_files = find_project_files(self.window)
-        self.project_folders = list(self.project_files.keys())
-        self.project_id = SetBuildMessage.make_build_id(self.project_folders)
+        self.proj_info = find_project_files(self.window)
+        self.proj_roots = list(self.proj_info.keys())
+        self.proj_id = SetBuildMessage.make_build_id(self.proj_roots)
 
-        self.connection.send(SetBuildMessage(self.project_id, self.project_folders))
+        # Make a big list of all files that need to be transferred. This is
+        # a list of lists that contains the root and the relative name. As
+        # we transmit files to the server, they're removed from this list.
+        # We know the build is ready to execute when the last file is done.
+        self.proj_files = []
+        for root in self.proj_roots:
+            for file in self.proj_info[root]:
+                self.proj_files.append([root, file])
+
+        # Send off the message to start the build now.
+        self.connection.send(SetBuildMessage(self.proj_id, self.proj_roots))
 
     def acknowledge(self, msg_id, ack):
         # For now, we don't do anything in response to a NACK message; only
@@ -175,13 +185,17 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         if msg_id == IntroductionMessage.msg_id() :
             return self.start_build()
 
-        # On ack of the build message, we can start transmitting file content.
-        if msg_id == SetBuildMessage.msg_id():
-            license = FileContentMessage(self.project_folders[0], "LICENSE")
-            return self.connection.send(license)
+        # When the build message or a file transmission is acknowledged, we
+        # can send the first (or next) file.
+        if msg_id in (SetBuildMessage.msg_id(), FileContentMessage.msg_id()):
+            self.send_next_file()
 
-        if msg_id == FileContentMessage.msg_id():
-            log("Receive: Transmit complete", panel=True)
+    def send_next_file(self):
+        if self.proj_files:
+            file_info = self.proj_files.pop()
+            return self.connection.send(FileContentMessage(file_info[0], file_info[1]))
+
+        log("Receive: All files transmitted", panel=True)
 
     def result(self, connection, notification):
         if notification == Notification.CLOSED:
