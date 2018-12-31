@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text;
 using System.Collections.Generic;
 
 
@@ -262,8 +263,30 @@ public partial class BuildClient
     /// </summary>
     void HandleFileContents(FileContentMessage message)
     {
+        // Map the root path on the client to the local cached version; if this
+        // fails, the client is sending us files for a root it didn't tell us
+        // about when it started the build, so trigger an error.
+        string local_path;
+        if (current_build_folders.TryGetValue(message.RootPath, out local_path) == false)
+        {
+            SendError(true, 2000, "Unrecognized root path {0}", message.RootPath);
+            return;
+        }
+
+        // Now we can combine the relative path of the file in the root with our
+        // locally mapped root in order to get an entire complete absolute file
+        // name.
+        //
+        // Once we do that, ensure that the directory that contains the file
+        // esists (since it may have never before seen relative parts) and then
+        // write it there.
+        var local_file = Path.Combine(local_path, message.RelativeName);
+
+        Directory.CreateDirectory(Path.GetDirectoryName(local_file));
+        File.WriteAllText(local_file, message.FileContent, Encoding.UTF8);
+
         // Now that we're done, tell the client that we have received the file
-        // and handled it.
+        // and handled it so they can send the next one or start the build.
         Acknowledge(MessageType.FileContent);
     }
 }
