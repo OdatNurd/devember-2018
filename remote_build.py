@@ -148,10 +148,27 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         #     notification,
         #     panel=True)
 
-        if connection.connected == False:
-            self.connection = None
+        if notification == Notification.CLOSED:
+            if connection == self.connection:
+                self.connection = None
+                log("Connection: Closed", panel=True)
 
-        if notification == Notification.MESSAGE:
+        elif notification == Notification.CONNECTING:
+            log("Connection: Connecting to {0}:{1}", connection.host, connection.port, panel=True)
+
+        elif notification == Notification.CONNECTED:
+            log("Connection: Connected", panel=True)
+
+        elif notification == Notification.CONNECTION_FAILED:
+            log("Connection: Failed", panel=True)
+
+        elif notification == Notification.SEND_ERROR:
+            log("Network: Send error", panel=True)
+
+        elif notification == Notification.RECV_ERROR:
+            log("Network: Receive error", panel=True)
+
+        elif notification == Notification.MESSAGE:
             msg = connection.receive()
             while msg is not None:
                 if isinstance(msg, MessageMessage):
