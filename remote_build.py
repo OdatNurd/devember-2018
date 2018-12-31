@@ -180,6 +180,9 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
             license = FileContentMessage(self.project_folders[0], "LICENSE")
             return self.connection.send(license)
 
+        if msg_id == FileContentMessage.msg_id():
+            log("Receive: Transmit complete", panel=True)
+
     def result(self, connection, notification):
         if notification == Notification.CLOSED:
             if connection == self.connection:

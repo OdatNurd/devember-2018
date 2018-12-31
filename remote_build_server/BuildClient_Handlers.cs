@@ -150,6 +150,7 @@ public partial class BuildClient
                 // a test that our encode/decode mechanisms work as expected.
                 case MessageType.FileContent:
                     EchoMessage(message);
+                    Acknowledge(MessageType.FileContent);
                     break;
 
                 default:
