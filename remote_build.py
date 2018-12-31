@@ -7,6 +7,7 @@ from queue import Queue
 import textwrap
 import socket
 import sys
+import os
 
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
@@ -210,11 +211,16 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
                 self.acknowledge(msg.message_id, msg.positive)
 
             elif isinstance(msg, FileContentMessage):
-                log("=== Received File ===", panel=True)
-                log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
-                log("======================", panel=True)
-                log("{0}", msg.file_content, panel=True)
-                log("======================", panel=True)
+                log("Receive: {0}/{1} ({2} bytes)",
+                    os.path.basename(os.path.normpath(msg.root_path)),
+                    msg.relative_name,
+                    len(msg.file_content),
+                    panel=True)
+                # log("=== Received File ===", panel=True)
+                # log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
+                # log("======================", panel=True)
+                # log("{0}", msg.file_content, panel=True)
+                # log("======================", panel=True)
 
             else:
                 log("Unhandled: {0}", msg, panel=True)
