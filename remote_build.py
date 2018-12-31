@@ -166,12 +166,17 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         self.connection.send(SetBuildMessage(self.project_id, self.project_folders))
 
     def acknowledge(self, msg_id, ack):
+        # For now, we don't do anything in response to a NACK message; only
+        # ACK.
+        if not ack:
+            return
+
         # On ack of the introduction message, start the build; we logged in
-        if msg_id == IntroductionMessage.msg_id() and ack:
+        if msg_id == IntroductionMessage.msg_id() :
             return self.start_build()
 
         # On ack of the build message, we can start transmitting file content.
-        if msg_id == SetBuildMessage.msg_id() and ack:
+        if msg_id == SetBuildMessage.msg_id():
             license = FileContentMessage(self.project_folders[0], "LICENSE")
             return self.connection.send(license)
 
