@@ -166,7 +166,7 @@ class ConnectionManager():
             pass
 
         connection = Connection(self, sock, host, port, callback)
-        log("Connecting to: {0}:{1}", host, port, panel=True)
+        # log("Connecting to: {0}:{1}", host, port, panel=True)
 
         return connection
 
@@ -175,8 +175,8 @@ class ConnectionManager():
         """
         Given a connection object, attempt to gracefully close it.
         """
-        log("Closing Connection: {0}:{1}",
-            connection.host, connection.port, panel=True)
+        # log("Closing Connection: {0}:{1}",
+        #     connection.host, connection.port, panel=True)
 
         if connection.socket:
             try:
@@ -258,13 +258,14 @@ class Connection():
         # notification right now.
         self._raise(Notification.CONNECTING)
 
-        log("  -- Creating connection: {0}".format(self))
+        # log("  -- Creating connection: {0}".format(self))
 
     def __del__(self):
-        log("  -- Destroying connection: {0}".format(self))
         # don't close here; assume the manager will close us before it goes
         # away.
         # self.close()
+        # log("  -- Destroying connection: {0}".format(self))
+        pass
 
     def __str__(self):
         return "<Connection host='{0}:{1}' socket={2} out={3} in={4}{5}>".format(
@@ -369,12 +370,12 @@ class Connection():
             code = self.socket.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
             if code == 0:
                 self.connected = True
-                log("Connection established: {0}:{1}",
-                    self.host, self.port, panel=True)
+                # log("Connection established: {0}:{1}",
+                #     self.host, self.port, panel=True)
                 self._raise(Notification.CONNECTED)
             else:
-                log("Connection failed: {0}:{1}: {2}",
-                    self.host, self.port, os.strerror(code), panel=True)
+                # log("Connection failed: {0}:{1}: {2}",
+                #     self.host, self.port, os.strerror(code), panel=True)
                 self._raise(Notification.CONNECTION_FAILED)
                 self.close()
                 return
