@@ -1,0 +1,60 @@
+%YAML 1.2
+---
+# See http://www.sublimetext.com/docs/3/syntax.html
+hidden: true
+scope: text.remote-build.output
+contexts:
+  main:
+    - match: '^(Connection)(:)\s*'
+      captures:
+        1: storage.type.function
+        2: punctuation.separator
+      push:
+        - meta_content_scope: string.unquoted
+        - match: '$\n?'
+          pop: true
+
+    - match: '^(Message)(:)\s*'
+      captures:
+        1: entity.name.function
+        2: punctuation.separator
+      push:
+        - meta_content_scope: string.unquoted
+        - match: '$\n?'
+          pop: true
+
+    - match: '^(Error)(:)\s*(\[)(\d+)(\])\s+'
+      captures:
+        1: storage
+        2: punctuation.separator
+        3: punctuation.section.begin
+        4: constant.numeric.error
+        5: punctuation.section.end
+      push:
+        - meta_content_scope: storage
+        - match: '$\n?'
+          pop: true
+
+    - match: '^(Sending)(:)\s*(\[)(....)+(\])\s+'
+      captures:
+        1: variable.language
+        2: punctuation.separator
+        3: punctuation.section.begin
+        4: constant.numeric.error
+        5: punctuation.section.end
+      push:
+        - meta_content_scope: entity.name.filename
+        - match: '\(.*\)'
+          scope: constant.language
+        - match: '$\n?'
+          pop: true
+
+    - match: '^(Receive)(:)\s*'
+      captures:
+        1: variable.language
+        2: punctuation.separator
+      push:
+        - meta_content_scope: string.unquoted
+        - match: '$\n?'
+          pop: true
+

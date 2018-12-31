@@ -41,6 +41,7 @@ def log(msg, *args, dialog=False, error=False, panel=False, **kwargs):
             view = window.create_output_panel("remote_build")
             view.set_read_only(True)
             view.settings().set("_rb_net_window", True)
+            view.assign_syntax("Packages/devember_2018/RemoteBuildPanel.sublime-syntax")
 
         view = window.find_output_panel("remote_build")
         view.run_command("append", {
