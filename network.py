@@ -126,22 +126,25 @@ class ConnectionManager():
             for connection in self.connections:
                 self._close_connection(connection)
 
-    def connect(self, host, port):
+    def connect(self, host, port, callback):
         """
         Return: Connection
 
         Attempt to create a connection to the given host and port. A new
         Connection object is returned, which is not yet connected.
 
+        If a callback is required, it will be registered directly as soon as
+        the connection is created.
+
         This connection is added to our internal list.
         """
         with self.conn_lock:
-            connection = self._open_connection(host, port)
+            connection = self._open_connection(host, port, callback)
             self.connections.append(connection)
 
         return connection
 
-    def _open_connection(self, host, port):
+    def _open_connection(self, host, port, callback):
         """
         Do the underlying work of actually opening up a brand new connection
         to the provided host and port.
@@ -153,7 +156,7 @@ class ConnectionManager():
         except BlockingIOError:
             pass
 
-        connection = Connection(self, sock, host, port)
+        connection = Connection(self, sock, host, port, callback)
         log("Connecting to: {0}:{1}", host, port, panel=True)
 
         return connection
@@ -220,7 +223,7 @@ class Connection():
     This class wraps a connection to the remote server. They are handed out by
     the connection manager in response to opening a connection.
     """
-    def __init__(self, mgr, socket, host, port):
+    def __init__(self, mgr, socket, host, port, callback):
         """
         Create a new connection to the provided host and port combination.
         This should only be called by the connection manager, which will hold
@@ -240,7 +243,7 @@ class Connection():
         self.receive_data = bytearray()
         self.expected_length = None
 
-        self.callback = None
+        self.callback = callback
 
         log("  -- Creating connection: {0}".format(self))
 
@@ -279,27 +282,6 @@ class Connection():
             return self.recv_queue.get_nowait()
         except queue.Empty:
             return None
-
-    def register(self, callback):
-        """
-        For registering an interest in incoming messages. Every time a message
-        arrives, or the connection breaks, the callback is invoked to tell the
-        caller.
-
-        Notifications will be raised by using set_timeout() (or the async
-        variant) so that the calling code gets handled in the main thread.
-        """
-        self.callback = callback
-
-    def unregister(self):
-        """
-        Using the key, which was provided by call to register(), cancel all
-        notifications from this connection.
-
-        If the register() method gets smart enough to filter, this should also
-        be enhanced.
-        """
-        self.callback = None
 
     def close(self):
         """

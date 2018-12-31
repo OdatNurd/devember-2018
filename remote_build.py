@@ -127,8 +127,7 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         self.start_build()
 
     def make_connection(self, host, port, username, password):
-        self.connection = netManager.connect(host, port)
-        self.connection.register(lambda c,n: self.result(c,n))
+        self.connection = netManager.connect(host, port, lambda c,n: self.result(c,n))
         self.connection.send(IntroductionMessage(username, password))
 
         self.start_build()
