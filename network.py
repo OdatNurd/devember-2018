@@ -71,8 +71,14 @@ class Notification():
     # The connection attempt to the remote host failed.
     CONNECTION_FAILED=3
 
+    # An error occured while sending data to the server
+    SEND_ERROR=4
+
+    # An error occured while receiving data from the server
+    RECV_ERROR=5
+
     # A message has been received
-    MESSAGE=4
+    MESSAGE=6
 
 
 ### ---------------------------------------------------------------------------
@@ -393,8 +399,9 @@ class Connection():
             pass
 
         except Exception as e:
+            self._raise(Notification.SEND_ERROR)
             log("Send Error: {0}:{1}: {2}",
-                self.host, self.port, e, panel=True)
+                self.host, self.port, e)
             self.close()
 
     def _receive(self):
@@ -436,8 +443,9 @@ class Connection():
             pass
 
         except Exception as e:
+            self._raise(Notification.RECV_ERROR)
             log("Receive Error: {0}:{1}: {2}",
-                self.host, self.port, e, panel=True)
+                self.host, self.port, e)
             self.close()
             return
 
