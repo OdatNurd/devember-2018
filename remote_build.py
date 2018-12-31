@@ -172,6 +172,12 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
             for file in self.proj_info[root]:
                 self.proj_files.append([root, file])
 
+        # Set up to track the percentage of files transmitted (count, not
+        # bytes overall).
+        if self.proj_files:
+            self.proj_pct = 0
+            self.proj_step = (1.0 / len(self.proj_files)) * 100.0
+
         # Send off the message to start the build now.
         self.connection.send(SetBuildMessage(self.proj_id, self.proj_roots))
 
@@ -193,7 +199,23 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
     def send_next_file(self):
         if self.proj_files:
             file_info = self.proj_files.pop()
-            return self.connection.send(FileContentMessage(file_info[0], file_info[1]))
+            file_msg = FileContentMessage(file_info[0], file_info[1])
+
+            # Count this as a new step percentage; ensure that the last file
+            # is always the 100% file.
+            if self.proj_files:
+                self.proj_pct += self.proj_step
+            else:
+                self.proj_pct = 100
+
+            log("Sending: [{3:3.0f}%] {0}/{1} ({2} bytes)",
+                os.path.basename(os.path.normpath(file_msg.root_path)),
+                file_msg.relative_name,
+                len(file_msg.file_content),
+                self.proj_pct,
+                panel=True)
+
+            return self.connection.send(file_msg)
 
         log("Receive: All files transmitted", panel=True)
 
@@ -232,17 +254,17 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
             elif isinstance(msg, AcknowledgeMessage):
                 self.acknowledge(msg.message_id, msg.positive)
 
-            elif isinstance(msg, FileContentMessage):
-                log("Receive: {0}/{1} ({2} bytes)",
-                    os.path.basename(os.path.normpath(msg.root_path)),
-                    msg.relative_name,
-                    len(msg.file_content),
-                    panel=True)
-                # log("=== Received File ===", panel=True)
-                # log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
-                # log("======================", panel=True)
-                # log("{0}", msg.file_content, panel=True)
-                # log("======================", panel=True)
+            # elif isinstance(msg, FileContentMessage):
+            #     log("Receive: {0}/{1} ({2} bytes)",
+            #         os.path.basename(os.path.normpath(msg.root_path)),
+            #         msg.relative_name,
+            #         len(msg.file_content),
+            #         panel=True)
+            #     # log("=== Received File ===", panel=True)
+            #     # log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
+            #     # log("======================", panel=True)
+            #     # log("{0}", msg.file_content, panel=True)
+            #     # log("======================", panel=True)
 
             else:
                 log("Unhandled: {0}", msg, panel=True)

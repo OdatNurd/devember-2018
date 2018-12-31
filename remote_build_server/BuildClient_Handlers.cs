@@ -146,11 +146,10 @@ public partial class BuildClient
                     HandleSetBuild(message as SetBuildMessage);
                     break;
 
-                // Temporarily echo file content messages back to the client as
-                // a test that our encode/decode mechanisms work as expected.
+                // The client is sending us the contents of a file. We need to
+                // persist it to disk so that it can take a part in the build.
                 case MessageType.FileContent:
-                    EchoMessage(message);
-                    Acknowledge(MessageType.FileContent);
+                    HandleFileContents(message as FileContentMessage);
                     break;
 
                 default:
@@ -255,5 +254,16 @@ public partial class BuildClient
         SendMessage("SetBuild OK: Using Build {0}", current_build_id);
         SendMessage("Build root: {0}", local_root_folder);
         Acknowledge(MessageType.SetBuild);
+    }
+
+    /// <summary>
+    /// Handle a file transmission by writing the file to the appropriate
+    /// location in the cache folder for the currently registered build.
+    /// </summary>
+    void HandleFileContents(FileContentMessage message)
+    {
+        // Now that we're done, tell the client that we have received the file
+        // and handled it.
+        Acknowledge(MessageType.FileContent);
     }
 }
