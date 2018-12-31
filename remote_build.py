@@ -67,6 +67,17 @@ def rb_setting(key):
 
 
 class RemoteBuildSelectConnectionCommand(sublime_plugin.WindowCommand):
+    """
+    Prompt the user with a quick panel to select one of the connections from
+    the connection list.
+
+    Upon selection, this forwards all arguments that the command receives,
+    plus a user, host, port and password to the build command to actually use
+    the build.
+
+    If the selected connection has no password, the command sends all arguments
+    to the command to select a password instead.
+    """
     def run(self, **kwargs):
         hosts = rb_setting("build_hosts")
 
@@ -98,6 +109,14 @@ class RemoteBuildSelectConnectionCommand(sublime_plugin.WindowCommand):
 
 
 class RemoteBuildServerEnterPasswordCommand(sublime_plugin.WindowCommand):
+    """
+    Prompt the user with an input panel to enter the password for a given
+    user@host combination.
+
+    Once the password is entered, all arguments to the command, plus the newly
+    entered password, are sent to the build command to actually execute the
+    build.
+    """
     def run(self, **kwargs):
         prompt = "{username}@{host} password:".format(
             username=kwargs["username"],
@@ -117,37 +136,45 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         self.connection = None
 
     def run(self, **kwargs):
+        self.build_args = kwargs
+
+        # If there is no connection, or there is but it's not connected, then
+        # either create a new connection or prompt the user for connection
+        # details, depending on the arguments we got.
         if self.connection is None or self.connection.connected == False:
             if all (k in kwargs for k in ("host", "port", "username", "password")):
-                return self.make_connection(kwargs["host"], kwargs["port"],
-                                            kwargs["username"], kwargs["password"])
+                self.connection = netManager.connect(kwargs["host"], kwargs["port"], lambda c,n: self.result(c,n))
+                self.connection.send(IntroductionMessage(kwargs["username"], kwargs["password"]))
+                return
+
             else:
                 return self.window.run_command("remote_build_select_connection", kwargs)
 
-        self.start_build()
-
-    def make_connection(self, host, port, username, password):
-        self.connection = netManager.connect(host, port, lambda c,n: self.result(c,n))
-        self.connection.send(IntroductionMessage(username, password))
-
+        # Must have a connection, so start the build now.
         self.start_build()
 
     def start_build(self):
-        project_files = find_project_files(self.window)
-        project_folders = list(project_files.keys())
-        project_id = SetBuildMessage.make_build_id(project_folders)
-        self.connection.send(SetBuildMessage(project_id, project_folders))
+        """
+        Kick off a build by capturing the list of project folders and files
+        and announcing it to the server.
+        """
+        self.project_files = find_project_files(self.window)
+        self.project_folders = list(self.project_files.keys())
+        self.project_id = SetBuildMessage.make_build_id(self.project_folders)
 
-        # Prepare the message, but don't send it yet.
-        self.content_msg = FileContentMessage(project_folders[0], "LICENSE")
+        self.connection.send(SetBuildMessage(self.project_id, self.project_folders))
+
+    def acknowledge(self, msg_id, ack):
+        # On ack of the introduction message, start the build; we logged in
+        if msg_id == IntroductionMessage.msg_id() and ack:
+            return self.start_build()
+
+        # On ack of the build message, we can start transmitting file content.
+        if msg_id == SetBuildMessage.msg_id() and ack:
+            license = FileContentMessage(self.project_folders[0], "LICENSE")
+            return self.connection.send(license)
 
     def result(self, connection, notification):
-        # log("==> Callback: {0}:{1} = {3}, {2}",
-        #     connection.host, connection.port,
-        #     "connected" if connection.connected else "disconnected",
-        #     notification,
-        #     panel=True)
-
         if notification == Notification.CLOSED:
             if connection == self.connection:
                 self.connection = None
@@ -170,28 +197,27 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
 
         elif notification == Notification.MESSAGE:
             msg = connection.receive()
-            while msg is not None:
-                if isinstance(msg, MessageMessage):
-                    log("Message: {0}", msg.msg, panel=True)
+            if msg is None:
+                return
 
-                elif isinstance(msg, ErrorMessage):
-                    log("Error: [{0}] => {1}", msg.error_code, msg.error_msg, panel=True)
+            if isinstance(msg, MessageMessage):
+                log("Message: {0}", msg.msg, panel=True)
 
-                elif isinstance(msg, AcknowledgeMessage):
-                    if msg.message_id == SetBuildMessage.msg_id() and msg.positive:
-                        self.connection.send(self.content_msg)
+            elif isinstance(msg, ErrorMessage):
+                log("Error: [{0}] => {1}", msg.error_code, msg.error_msg, panel=True)
 
-                elif isinstance(msg, FileContentMessage):
-                    log("=== Received File ===", panel=True)
-                    log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
-                    log("======================", panel=True)
-                    log("{0}", msg.file_content, panel=True)
-                    log("======================", panel=True)
+            elif isinstance(msg, AcknowledgeMessage):
+                self.acknowledge(msg.message_id, msg.positive)
 
-                else:
-                    log("Unhandled: {0}", msg, panel=True)
+            elif isinstance(msg, FileContentMessage):
+                log("=== Received File ===", panel=True)
+                log("{0}/{1}", msg.root_path, msg.relative_name, panel=True)
+                log("======================", panel=True)
+                log("{0}", msg.file_content, panel=True)
+                log("======================", panel=True)
 
-                msg = connection.receive()
+            else:
+                log("Unhandled: {0}", msg, panel=True)
 
 
 ### ---------------------------------------------------------------------------
