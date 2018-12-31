@@ -62,14 +62,17 @@ class Notification():
     # The connection was closed (either gracefully or due to an error).
     CLOSED=0
 
+    # A new connection attempt is being made on the connection
+    CONNECTING=1
+
     # The connection has successfully connected
-    CONNECTED=1
+    CONNECTED=2
 
     # The connection attempt to the remote host failed.
-    CONNECTION_FAILED=2
+    CONNECTION_FAILED=3
 
     # A message has been received
-    MESSAGE=3
+    MESSAGE=4
 
 
 ### ---------------------------------------------------------------------------
@@ -244,6 +247,10 @@ class Connection():
         self.expected_length = None
 
         self.callback = callback
+
+        # We get created in response to a connect call, so trigger a connecting
+        # notification right now.
+        self._raise(Notification.CONNECTING)
 
         log("  -- Creating connection: {0}".format(self))
 
