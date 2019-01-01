@@ -139,6 +139,17 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
     def run(self, **kwargs):
         self.build_args = kwargs
 
+        # Assume we want to build the `test_project` contained in our package.
+        self.build_args["folders"] = [
+            {
+                "path": os.path.join(sublime.packages_path(), "devember_2018", "test_project"),
+                "folder_exclude_patterns": ["bin", "obj"]
+            }
+        ]
+
+        # The shell command is the command to compile and run a dotnet program.
+        self.build_args["shell_cmd"] = "dotnet run"
+
         # If there is no connection, or there is but it's not connected, then
         # either create a new connection or prompt the user for connection
         # details, depending on the arguments we got.
@@ -159,7 +170,7 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
         Kick off a build by capturing the list of project folders and files
         and announcing it to the server.
         """
-        self.proj_info = find_project_files(self.window)
+        self.proj_info = find_project_files(self.window, folders=self.build_args["folders"])
         self.proj_roots = list(self.proj_info.keys())
         self.proj_id = SetBuildMessage.make_build_id(self.proj_roots)
 
