@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 
 // The state object for reading client data.
@@ -155,6 +156,13 @@ public partial class BuildClient
                     HandleFileContents(message as FileContentMessage);
                     break;
 
+                // Handle the command to execute a build by running the given
+                // command inside of the appropriate folder, dispatching all of
+                // the output back to the other end.
+                case MessageType.ExecuteBuild:
+                    HandleExecuteBuild(message as ExecuteBuildMessage);
+                    break;
+
                 default:
                     throw new Exception("Unknown message type");
             }
@@ -290,5 +298,132 @@ public partial class BuildClient
         // Now that we're done, tell the client that we have received the file
         // and handled it so they can send the next one or start the build.
         Acknowledge(MessageType.FileContent);
+    }
+
+    /// <summary>
+    /// Handle the execution of the build by executing the command that exists
+    /// in the first cached folder in the build.
+    /// </summary>
+    void HandleExecuteBuild(ExecuteBuildMessage message)
+    {
+        // Determine what the working directory should be; we want it to be
+        // the first path given to us. For our purposes here since this is a
+        // dictionary, we just select the first key. This is entirely not the
+        // right thing, but we need to think more about how to convey the
+        // appropriate working directory from the client to the server anyway.
+        string working_dir;
+        using (var enumerator = current_build_folders.GetEnumerator())
+        {
+            enumerator.MoveNext();
+            working_dir = enumerator.Current.Value;
+        }
+
+        // Say what we're going to do, then do it.
+        //
+        // Here the working directory is shortened up for clarity.
+        SendMessage("Executing '{0}' (working_dir: {1})", message.ShellCmd, Path.GetFileName(working_dir));
+        ExecuteProcess(message.ShellCmd, working_dir);
+    }
+
+    /// <summary>
+    /// Given a shell command and a working directory, return back an object
+    /// that knows how to execute that command in that directory.
+    /// </summary>
+    /// <remarks>
+    /// This tries to be smart so that the command will execute properly
+    /// regardless of platform, but it has only been tested on Linux and Windows
+    /// as the current time (and not extensitively by any stretch).
+    /// </remarks>
+    ProcessStartInfo GetProcessStartInfo(string shell_cmd, string working_dir)
+    {
+        ProcessStartInfo startInfo = new ProcessStartInfo();
+
+        // Ensure that any double quotes in the input string are handled
+        // properly.
+        shell_cmd = shell_cmd.Replace("\"", "\\\"");
+
+        // If there is a COMSPEC environemtn variable, we're on windows.
+        // Use that to execute the command.
+        var comspec = Environment.GetEnvironmentVariable("COMSPEC");
+        if (comspec != null)
+        {
+            startInfo.FileName = comspec;
+            startInfo.Arguments = String.Format(@"/C ""{0}""", shell_cmd);
+        }
+        else
+        {
+            // On Linux/MacOS, use bash to execute the shell command; we
+            // will use env to determine where it is, in case it's not in a
+            // standard location.
+            startInfo.FileName = "/usr/bin/env";
+            startInfo.Arguments = String.Format(@"bash -c ""{0}""", shell_cmd);
+        }
+
+        // We don't wait to create a window; the task should just run in the
+        // background on the server.
+        startInfo.CreateNoWindow = true;
+
+        // Set the working directory up.
+        startInfo.WorkingDirectory = working_dir;
+
+        // Set up to capture standard output and standard error; this
+        // requires that we don't let the shell execute the thing,
+        // apparently.
+        startInfo.UseShellExecute = false;
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
+
+        return startInfo;
+    }
+
+    /// <summary>
+    /// Execute the process specified in the given ProcessStartInfo structure.
+    /// This happens in the background and (for the moment) can't be stopped
+    /// once started.
+    /// </summary>
+    void ExecuteProcess(string shell_cmd, string working_dir)
+    {
+        try
+        {
+            // Create a process to run our build, and give it the process info
+            // we were given.
+            // Create a process
+            var process = new Process();
+            process.StartInfo = GetProcessStartInfo(shell_cmd, working_dir);
+
+            // Set up event handlers to handle when output data is received
+            // from the stdout and stderr. These both ensure that they don't
+            // handle output when it's a null, because that is an indication
+            // that the output is done now.
+            process.OutputDataReceived += (sender, data) => {
+                if (data.Data != null)
+                    Send(new BuildOutputMessage(data.Data, true));
+            };
+
+            process.ErrorDataReceived += (sender, data) => {
+                if (data.Data != null)
+                    Send(new BuildOutputMessage(data.Data, false));
+            };
+
+            // Also ensure that we can detect when the process is going away
+            // so that we can dispose it and such.
+            process.EnableRaisingEvents = true;
+            process.Exited += (sender, e) => {
+                Process sendProc = sender as Process;
+
+                Send(new BuildCompleteMessage((UInt16) sendProc.ExitCode));
+                sendProc.Dispose();
+            };
+
+            // Launch it and start reading output in the background. We'll get
+            // events when it exits or data arrives, so we can just leave now.
+            process.Start();
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+        }
+        catch (Exception error)
+        {
+            SendError(false, 3000, "Error: {0}", error.Message);
+        }
     }
 }
