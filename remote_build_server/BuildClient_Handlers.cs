@@ -130,6 +130,8 @@ public partial class BuildClient
                 case MessageType.Message:
                 case MessageType.Error:
                 case MessageType.Acknowledge:
+                case MessageType.BuildOutput:
+                case MessageType.BuildComplete:
                     ProtocolViolationMessage(message, "These messages are for server use only");
                     break;
 
