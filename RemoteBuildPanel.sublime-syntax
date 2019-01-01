@@ -58,3 +58,23 @@ contexts:
         - match: '$\n?'
           pop: true
 
+    - match: '^(Output)(:)\s*(\[..\])'
+      captures:
+        1: entity.name.function
+        2: punctuation.separator
+        3: entity.name.function
+      push:
+        - meta_content_scope: string.unquoted
+        - match: '$\n?'
+          pop: true
+
+    - match: '^(Build)(:)\s*'
+      captures:
+        1: variable.language
+        2: punctuation.separator
+      push:
+        - meta_content_scope: string.unquoted
+        - match: '\d+'
+          scope: constant.numeric
+        - match: '$\n?'
+          pop: true

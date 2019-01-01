@@ -278,6 +278,14 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
             #     # log("{0}", msg.file_content, panel=True)
             #     # log("======================", panel=True)
 
+            elif isinstance(msg, BuildOutputMessage):
+                log("Output: [{0}] {1}",
+                    "SO" if msg.stdout else "SE",
+                    msg.msg, panel=True)
+
+            elif isinstance(msg, BuildCompleteMessage):
+                log("Build: Finished with exit code {0}",
+                    msg.exit_code, panel=True)
             else:
                 log("Unhandled: {0}", msg, panel=True)
 
