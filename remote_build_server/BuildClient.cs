@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Collections.Concurrent;
+using System.Threading;
 
 // The state object for reading client data.
 public partial class BuildClient
@@ -29,6 +30,8 @@ public partial class BuildClient
     public int bytesSent;
     public bool closeAfterSending;
 
+    public Mutex sendMutex;
+
     // The queue of messages that should be transmitted to the remote end of the
     // connection.
     public ConcurrentQueue<IProtocolMessage> outQueue = new ConcurrentQueue<IProtocolMessage>();
@@ -44,6 +47,7 @@ public partial class BuildClient
     {
         socket = clientSocket;
         config = globalConfig;
+        sendMutex = new Mutex();
     }
 
     /// <summary>
@@ -52,9 +56,13 @@ public partial class BuildClient
     /// </summary>
     public void Send(IProtocolMessage msg)
     {
+        sendMutex.WaitOne();
+
         outQueue.Enqueue(msg);
         if (sendBuffer == null)
             BeginSending();
+
+        sendMutex.ReleaseMutex();
     }
 
     /// <summary>
@@ -181,6 +189,8 @@ public partial class BuildClient
     {
         try
         {
+            sendMutex.WaitOne();
+
             BuildClient client = (BuildClient) ar.AsyncState;
             Socket socket = client.socket;
 
@@ -220,6 +230,11 @@ public partial class BuildClient
         catch (Exception e)
         {
             Console.WriteLine(e.ToString());
+        }
+
+        finally
+        {
+            sendMutex.ReleaseMutex();
         }
     }
 }
