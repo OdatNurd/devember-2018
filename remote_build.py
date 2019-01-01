@@ -229,7 +229,8 @@ class RemoteBuildCommand(sublime_plugin.WindowCommand):
 
             return self.connection.send(file_msg)
 
-        log("Receive: All files transmitted", panel=True)
+        log("Receive: All files transmitted, starting build", panel=True)
+        self.connection.send(ExecuteBuildMessage(self.build_args["shell_cmd"]))
 
     def result(self, connection, notification):
         if notification == Notification.CLOSED:
