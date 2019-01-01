@@ -338,3 +338,107 @@ class FileContentMessage(ProtocolMessage):
             self.file_content)
 
 ProtocolMessage.register(FileContentMessage)
+
+
+class ExecuteBuildMessage(ProtocolMessage):
+    """
+    This message is used to tell the remote server that it should execute the
+    build. The build always happens in the first folder that was sent to the
+    server, and requires that the files already be sent there.
+    """
+    def __init__(self, shell_cmd):
+        self.shell_cmd = shell_cmd
+
+    def __str__(self):
+        return "<ExecuteBuild shell_cmd='{0}'>".format(self.shell_cmd)
+
+    @classmethod
+    def msg_id(cls):
+        return 6
+
+    @classmethod
+    def decode(cls, data):
+        pre_len = struct.calcsize(">HI")
+        _, msg_len = struct.unpack(">HI", data[:pre_len])
+
+        msg_str, = struct.unpack_from(">%ds" % msg_len, data, pre_len)
+
+        return ExecuteBuildMessage(msg_str.decode('utf-8'))
+
+    def encode(self):
+        msg_data = self.shell_cmd.encode("utf-8")
+        return struct.pack(">IHI%ds" % len(msg_data),
+            2 + 4 + len(msg_data),
+            ExecuteBuildMessage.msg_id(),
+            len(msg_data),
+            msg_data)
+
+ProtocolMessage.register(ExecuteBuildMessage)
+
+
+class BuildOutputMessage(ProtocolMessage):
+    """
+    This messages is used by the server to transmit information to us on the
+    output of a running build.
+    """
+    def __init__(self, msg, stdout):
+        self.msg = msg
+        self.stdout = stdout
+
+    def __str__(self):
+        return "<BuildOutput msg='{0}' is_stdout={1}>".format(
+            self.msg, self.stdout)
+
+    @classmethod
+    def msg_id(cls):
+        return 7
+
+    @classmethod
+    def decode(cls, data):
+        pre_len = struct.calcsize(">H?I")
+        _, is_stdout, msg_len = struct.unpack(">H?I", data[:pre_len])
+
+        msg_str, = struct.unpack_from(">%ds" % msg_len, data, pre_len)
+
+        return BuildOutputMessage(msg_str.decode('utf-8'), is_stdout)
+
+    def encode(self):
+        msg_data = self.msg.encode("utf-8")
+        return struct.pack(">IH?I%ds" % len(msg_data),
+            2 + 1 + 4 + len(msg_data),
+            BuildOutputMessage.msg_id(),
+            self.stdout,
+            len(msg_data),
+            msg_data)
+
+ProtocolMessage.register(BuildOutputMessage)
+
+
+class BuildCompleteMessage(ProtocolMessage):
+    """
+    This message is used by the server to transmit the information that the
+    build has completed and what the exit code was.
+    """
+    def __init__(self, exit_code):
+        self.exit_code = exit_code
+
+    def __str__(self):
+        return "<BuildComplete exit_code={0}>".format(self.exit_code)
+
+    @classmethod
+    def msg_id(cls):
+        return 8
+
+    @classmethod
+    def decode(cls, data):
+        _, code = struct.unpack(">HH", data)
+
+        return BuildCompleteMessage(code)
+
+    def encode(self):
+        return struct.pack(">IHH",
+            2 + 2,
+            BuildCompleteMessage.msg_id(),
+            self.exit_code)
+
+ProtocolMessage.register(BuildCompleteMessage)

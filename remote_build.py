@@ -12,7 +12,8 @@ import os
 from .messages import ProtocolMessage, IntroductionMessage
 from .messages import MessageMessage, ErrorMessage
 from .messages import SetBuildMessage, AcknowledgeMessage
-from .messages import FileContentMessage
+from .messages import FileContentMessage, ExecuteBuildMessage
+from .messages import BuildOutputMessage, BuildCompleteMessage
 
 from .network import ConnectionManager, Notification, log
 

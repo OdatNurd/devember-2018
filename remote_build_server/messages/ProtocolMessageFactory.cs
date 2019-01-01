@@ -13,6 +13,9 @@ public enum MessageType
     SetBuild = 3,
     Acknowledge = 4,
     FileContent = 5,
+    ExecuteBuild = 6,
+    BuildOutput = 7,
+    BuildComplete = 8,
 }
 
 // An interface that represents a protocol message;
@@ -56,6 +59,15 @@ public class ProtocolMessageFactory
 
             case MessageType.FileContent:
                 return new FileContentMessage(data);
+
+            case MessageType.ExecuteBuild:
+                return new ExecuteBuildMessage(data);
+
+            case MessageType.BuildOutput:
+                return new BuildOutputMessage(data);
+
+            case MessageType.BuildComplete:
+                return new BuildCompleteMessage(data);
 
             default:
                 throw new ArgumentOutOfRangeException("Unrecognized message type");
