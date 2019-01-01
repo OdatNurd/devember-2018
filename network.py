@@ -44,7 +44,8 @@ def log(msg, *args, dialog=False, error=False, panel=False, **kwargs):
             view.settings().set("gutter", False)
             view.settings().set("rulers", [])
             view.settings().set("word_wrap", False)
-            view.assign_syntax("Packages/devember_2018/RemoteBuildPanel.sublime-syntax")
+            view.settings().set("syntax", "Packages/devember_2018/RemoteBuildPanel.sublime-syntax")
+            # view.assign_syntax("Packages/devember_2018/RemoteBuildPanel.sublime-syntax")
 
         view = window.find_output_panel("remote_build")
         view.run_command("append", {
